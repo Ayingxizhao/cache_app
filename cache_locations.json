@@ -1,0 +1,382 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "macOS Cache Locations Configuration for Cache Cleaner Application",
+    "last_updated": "2024-12-19",
+    "author": "Cache App Development Team"
+  },
+  "system_caches": [
+    {
+      "id": "system_library_caches",
+      "name": "System Library Caches",
+      "path": "/System/Library/Caches/",
+      "description": "Essential system cache files used by macOS system components",
+      "permissions": "System-only access, requires admin privileges",
+      "safety_level": "dangerous",
+      "recommendation": "Do not modify - can affect system stability",
+      "file_patterns": ["*.cache", "*.db", "*.plist"],
+      "size_estimate": "varies",
+      "cleanup_risk": "high"
+    },
+    {
+      "id": "library_caches",
+      "name": "System-wide Caches",
+      "path": "/Library/Caches/",
+      "description": "Cache files shared across all users on the system",
+      "permissions": "Requires admin privileges",
+      "safety_level": "moderate",
+      "recommendation": "Proceed with caution - may affect system-wide applications",
+      "file_patterns": ["*.cache", "*.tmp", "*.log"],
+      "size_estimate": "100MB-1GB",
+      "cleanup_risk": "medium"
+    },
+    {
+      "id": "var_folders",
+      "name": "User Temporary Files",
+      "path": "/private/var/folders/",
+      "description": "Per-user temporary files and caches managed by macOS",
+      "permissions": "System-managed, user-specific subdirectories",
+      "safety_level": "moderate",
+      "recommendation": "Let system manage - manual cleanup not recommended",
+      "file_patterns": ["*", "T/*", "C/*"],
+      "size_estimate": "500MB-5GB",
+      "cleanup_risk": "medium"
+    },
+    {
+      "id": "var_tmp",
+      "name": "System Temporary Files",
+      "path": "/private/var/tmp/",
+      "description": "Temporary files that persist across reboots",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - files are temporary",
+      "file_patterns": ["*", "*.tmp", "*.log"],
+      "size_estimate": "10MB-100MB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "tmp",
+      "name": "Temporary Files",
+      "path": "/private/tmp/",
+      "description": "Temporary files cleared on reboot",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - files are temporary",
+      "file_patterns": ["*", "*.tmp"],
+      "size_estimate": "1MB-50MB",
+      "cleanup_risk": "low"
+    }
+  ],
+  "user_caches": [
+    {
+      "id": "user_library_caches",
+      "name": "User Library Caches",
+      "path": "~/Library/Caches/",
+      "description": "User-specific cache files for applications",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - applications will regenerate as needed",
+      "file_patterns": ["*", "*/Cache/*", "*/WebKit/*"],
+      "size_estimate": "1GB-10GB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "user_application_support",
+      "name": "User Application Support",
+      "path": "~/Library/Application Support/",
+      "description": "Application support files, some may contain cache-like data",
+      "permissions": "User accessible",
+      "safety_level": "moderate",
+      "recommendation": "Review before cleaning - may contain important user data",
+      "file_patterns": ["*/Cache/*", "*/Data/*", "*/Logs/*"],
+      "size_estimate": "500MB-5GB",
+      "cleanup_risk": "medium"
+    },
+    {
+      "id": "user_containers",
+      "name": "Sandboxed Application Data",
+      "path": "~/Library/Containers/",
+      "description": "Data for sandboxed applications including caches",
+      "permissions": "User accessible",
+      "safety_level": "moderate",
+      "recommendation": "Review per application - some contain important data",
+      "file_patterns": ["*/Data/Library/Caches/*", "*/Data/tmp/*"],
+      "size_estimate": "100MB-2GB",
+      "cleanup_risk": "medium"
+    },
+    {
+      "id": "user_logs",
+      "name": "User Logs",
+      "path": "~/Library/Logs/",
+      "description": "User-specific log files",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - logs can be regenerated",
+      "file_patterns": ["*.log", "*/DiagnosticReports/*"],
+      "size_estimate": "10MB-500MB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "user_preferences",
+      "name": "User Preferences",
+      "path": "~/Library/Preferences/",
+      "description": "User preference files, some may cache settings",
+      "permissions": "User accessible",
+      "safety_level": "moderate",
+      "recommendation": "Do not clean - contains important user settings",
+      "file_patterns": ["*.plist"],
+      "size_estimate": "1MB-50MB",
+      "cleanup_risk": "high"
+    }
+  ],
+  "application_caches": [
+    {
+      "id": "chrome_cache",
+      "name": "Google Chrome Cache",
+      "path": "~/Library/Caches/Google/Chrome/",
+      "description": "Chrome browser cache including web pages, images, and media",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - will improve browser performance",
+      "file_patterns": ["Default/Cache/*", "Default/Code Cache/*", "Default/GPUCache/*"],
+      "size_estimate": "500MB-5GB",
+      "cleanup_risk": "low",
+      "application": "Google Chrome",
+      "bundle_id": "com.google.Chrome"
+    },
+    {
+      "id": "safari_cache",
+      "name": "Safari Cache",
+      "path": "~/Library/Caches/com.apple.Safari/",
+      "description": "Safari browser cache including web pages and resources",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - will improve browser performance",
+      "file_patterns": ["Webpage Previews/*", "LocalStorage/*", "Cache.db*"],
+      "size_estimate": "100MB-2GB",
+      "cleanup_risk": "low",
+      "application": "Safari",
+      "bundle_id": "com.apple.Safari"
+    },
+    {
+      "id": "firefox_cache",
+      "name": "Firefox Cache",
+      "path": "~/Library/Caches/Firefox/",
+      "description": "Firefox browser cache including web content and media",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - will improve browser performance",
+      "file_patterns": ["Profiles/*/cache2/*", "Profiles/*/startupCache/*"],
+      "size_estimate": "200MB-3GB",
+      "cleanup_risk": "low",
+      "application": "Firefox",
+      "bundle_id": "org.mozilla.firefox"
+    },
+    {
+      "id": "spotify_cache",
+      "name": "Spotify Cache",
+      "path": "~/Library/Caches/com.spotify.client/",
+      "description": "Spotify music streaming cache",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - music will re-download as needed",
+      "file_patterns": ["Storage/*", "PersistentCache/*"],
+      "size_estimate": "500MB-10GB",
+      "cleanup_risk": "low",
+      "application": "Spotify",
+      "bundle_id": "com.spotify.client"
+    },
+    {
+      "id": "adobe_cache",
+      "name": "Adobe Applications Cache",
+      "path": "~/Library/Caches/Adobe/",
+      "description": "Cache files for Adobe Creative Suite applications",
+      "permissions": "User accessible",
+      "safety_level": "moderate",
+      "recommendation": "Review before cleaning - may contain work-in-progress data",
+      "file_patterns": ["Common/Media Cache/*", "Common/Media Cache Files/*", "Photoshop/*"],
+      "size_estimate": "1GB-20GB",
+      "cleanup_risk": "medium",
+      "application": "Adobe Creative Suite",
+      "bundle_id": "com.adobe.*"
+    },
+    {
+      "id": "vscode_cache",
+      "name": "Visual Studio Code Cache",
+      "path": "~/Library/Caches/com.microsoft.VSCode/",
+      "description": "VS Code editor cache including extensions and workspace data",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - extensions will reinstall as needed",
+      "file_patterns": ["CachedData/*", "CachedExtensions/*", "logs/*"],
+      "size_estimate": "50MB-1GB",
+      "cleanup_risk": "low",
+      "application": "Visual Studio Code",
+      "bundle_id": "com.microsoft.VSCode"
+    },
+    {
+      "id": "xcode_cache",
+      "name": "Xcode Cache",
+      "path": "~/Library/Developer/Xcode/DerivedData/",
+      "description": "Xcode build cache and derived data",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - will rebuild projects as needed",
+      "file_patterns": ["*/Build/Intermediates.noindex/*", "*/Index/*"],
+      "size_estimate": "1GB-50GB",
+      "cleanup_risk": "low",
+      "application": "Xcode",
+      "bundle_id": "com.apple.dt.Xcode"
+    },
+    {
+      "id": "docker_cache",
+      "name": "Docker Cache",
+      "path": "~/Library/Containers/com.docker.docker/Data/vms/0/data/",
+      "description": "Docker container and image cache",
+      "permissions": "User accessible",
+      "safety_level": "moderate",
+      "recommendation": "Review before cleaning - may contain important containers",
+      "file_patterns": ["Docker.raw", "*.qcow2"],
+      "size_estimate": "5GB-100GB",
+      "cleanup_risk": "medium",
+      "application": "Docker Desktop",
+      "bundle_id": "com.docker.docker"
+    },
+    {
+      "id": "slack_cache",
+      "name": "Slack Cache",
+      "path": "~/Library/Containers/com.tinyspeck.slackmacgap/Data/Library/Caches/",
+      "description": "Slack application cache including messages and media",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - messages will reload as needed",
+      "file_patterns": ["com.tinyspeck.slackmacgap/*", "*.db", "*.cache"],
+      "size_estimate": "100MB-2GB",
+      "cleanup_risk": "low",
+      "application": "Slack",
+      "bundle_id": "com.tinyspeck.slackmacgap"
+    },
+    {
+      "id": "discord_cache",
+      "name": "Discord Cache",
+      "path": "~/Library/Application Support/discord/Cache/",
+      "description": "Discord application cache including media and messages",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - media will re-download as needed",
+      "file_patterns": ["Cache/*", "Code Cache/*", "GPUCache/*"],
+      "size_estimate": "200MB-3GB",
+      "cleanup_risk": "low",
+      "application": "Discord",
+      "bundle_id": "com.hnc.Discord"
+    },
+    {
+      "id": "mail_cache",
+      "name": "Mail Cache",
+      "path": "~/Library/Mail/",
+      "description": "macOS Mail application cache including email data",
+      "permissions": "User accessible",
+      "safety_level": "moderate",
+      "recommendation": "Review before cleaning - may contain important email data",
+      "file_patterns": ["V*/MailData/*", "V*/MailData/Envelope Index*"],
+      "size_estimate": "100MB-5GB",
+      "cleanup_risk": "medium",
+      "application": "Mail",
+      "bundle_id": "com.apple.mail"
+    },
+    {
+      "id": "photos_cache",
+      "name": "Photos Cache",
+      "path": "~/Library/Caches/com.apple.Photos/",
+      "description": "Photos application cache including thumbnails and previews",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - thumbnails will regenerate as needed",
+      "file_patterns": ["Thumbnails/*", "Caches/*", "*.db"],
+      "size_estimate": "500MB-10GB",
+      "cleanup_risk": "low",
+      "application": "Photos",
+      "bundle_id": "com.apple.Photos"
+    }
+  ],
+  "special_locations": [
+    {
+      "id": "kernel_cache",
+      "name": "Kernel Extensions Cache",
+      "path": "/System/Library/Extensions.kextcache",
+      "description": "Caches kernel extensions for faster loading",
+      "permissions": "System-only access",
+      "safety_level": "dangerous",
+      "recommendation": "Do not modify - critical for system stability",
+      "file_patterns": ["Extensions.kextcache"],
+      "size_estimate": "10MB-100MB",
+      "cleanup_risk": "high"
+    },
+    {
+      "id": "font_cache",
+      "name": "Font Cache",
+      "path": "/System/Library/Caches/com.apple.ATS/",
+      "description": "Font rendering cache for system fonts",
+      "permissions": "System-only access",
+      "safety_level": "dangerous",
+      "recommendation": "Do not modify - affects font rendering",
+      "file_patterns": ["*.cache", "*.db"],
+      "size_estimate": "10MB-100MB",
+      "cleanup_risk": "high"
+    },
+    {
+      "id": "launchd_cache",
+      "name": "Launch Services Cache",
+      "path": "/System/Library/Caches/com.apple.LaunchServices/",
+      "description": "Cache for application launch services",
+      "permissions": "System-only access",
+      "safety_level": "dangerous",
+      "recommendation": "Do not modify - affects application launching",
+      "file_patterns": ["*.cache", "*.db"],
+      "size_estimate": "1MB-10MB",
+      "cleanup_risk": "high"
+    }
+  ],
+  "cleanup_recommendations": {
+    "safe_to_clean": [
+      "user_library_caches",
+      "chrome_cache",
+      "safari_cache",
+      "firefox_cache",
+      "spotify_cache",
+      "vscode_cache",
+      "xcode_cache",
+      "slack_cache",
+      "discord_cache",
+      "photos_cache",
+      "var_tmp",
+      "tmp",
+      "user_logs"
+    ],
+    "review_before_cleaning": [
+      "user_application_support",
+      "user_containers",
+      "adobe_cache",
+      "docker_cache",
+      "mail_cache"
+    ],
+    "do_not_clean": [
+      "system_library_caches",
+      "kernel_cache",
+      "font_cache",
+      "launchd_cache",
+      "user_preferences"
+    ]
+  },
+  "permissions_info": {
+    "user_accessible": "Can be accessed and modified by the current user without special privileges",
+    "admin_required": "Requires administrator privileges to modify",
+    "system_managed": "Managed by macOS system, manual modification not recommended",
+    "sandboxed": "Access restricted to the specific application due to sandboxing"
+  },
+  "safety_levels": {
+    "safe": "Low risk - safe to clean without affecting system or application functionality",
+    "moderate": "Medium risk - review contents before cleaning, may affect some functionality",
+    "dangerous": "High risk - not recommended to clean, may cause system instability"
+  }
+}
