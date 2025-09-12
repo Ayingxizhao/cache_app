@@ -10,6 +10,10 @@ export function GetCacheLocationsFromConfig() {
   return window['go']['main']['App']['GetCacheLocationsFromConfig']();
 }
 
+export function GetLastScanResult() {
+  return window['go']['main']['App']['GetLastScanResult']();
+}
+
 export function GetScanProgress() {
   return window['go']['main']['App']['GetScanProgress']();
 }

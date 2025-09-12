@@ -5,6 +5,8 @@ export function GetCacheLocationInfo(arg1:string):Promise<string>;
 
 export function GetCacheLocationsFromConfig():Promise<string>;
 
+export function GetLastScanResult():Promise<string>;
+
 export function GetScanProgress():Promise<string>;
 
 export function GetSystemInfo():Promise<string>;

@@ -101,6 +101,13 @@ func (cs *CacheScanner) IsScanning() bool {
 	return cs.isScanning
 }
 
+// SetScanning sets the scanning state
+func (cs *CacheScanner) SetScanning(scanning bool) {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	cs.isScanning = scanning
+}
+
 // ScanLocation scans a single cache location
 func (cs *CacheScanner) ScanLocation(locationID, locationName, path string) (*CacheLocation, error) {
 	startTime := time.Now()

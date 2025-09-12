@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -14,6 +15,8 @@ import (
 type App struct {
 	ctx          context.Context
 	cacheScanner *CacheScanner
+	lastScanResult *CacheLocation
+	mu           sync.RWMutex
 }
 
 // NewApp creates a new App application struct
@@ -35,26 +38,39 @@ func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
-// ScanCacheLocation scans a single cache location and returns the result
+// ScanCacheLocation scans a single cache location asynchronously and returns immediately
 func (a *App) ScanCacheLocation(locationID, locationName, path string) (string, error) {
 	log.Printf("Starting scan of location: %s (%s)", locationName, path)
 	
-	location, err := a.cacheScanner.ScanLocation(locationID, locationName, path)
-	if err != nil {
-		log.Printf("Error scanning location %s: %v", locationName, err)
-		return "", err
+	// Check if already scanning
+	if a.cacheScanner.IsScanning() {
+		return "", fmt.Errorf("scan already in progress")
 	}
 	
-	result, err := location.ToJSON()
-	if err != nil {
-		log.Printf("Error serializing location result: %v", err)
-		return "", err
-	}
+	// Set scanning state before starting
+	a.cacheScanner.SetScanning(true)
 	
-	log.Printf("Completed scan of location: %s (files: %d, size: %d bytes)", 
-		locationName, location.FileCount, location.TotalSize)
+	// Start scan in goroutine
+	go func() {
+		defer a.cacheScanner.SetScanning(false)
+		
+		location, err := a.cacheScanner.ScanLocation(locationID, locationName, path)
+		if err != nil {
+			log.Printf("Error scanning location %s: %v", locationName, err)
+			return
+		}
+		
+		// Store the result
+		a.mu.Lock()
+		a.lastScanResult = location
+		a.mu.Unlock()
+		
+		log.Printf("Completed scan of location: %s (files: %d, size: %d bytes)", 
+			locationName, location.FileCount, location.TotalSize)
+	}()
 	
-	return result, nil
+	// Return immediately with a status message
+	return `{"status": "scan_started", "message": "Scan started in background"}`, nil
 }
 
 // ScanMultipleCacheLocations scans multiple cache locations concurrently
@@ -114,6 +130,23 @@ func (a *App) GetScanProgress() (string, error) {
 	// This is a simplified version - in a real implementation,
 	// you might want to store the last progress update
 	return `{"status": "scanning"}`, nil
+}
+
+// GetLastScanResult returns the result of the last completed scan
+func (a *App) GetLastScanResult() (string, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	
+	if a.lastScanResult == nil {
+		return `{"status": "no_result", "message": "No scan result available"}`, nil
+	}
+	
+	result, err := a.lastScanResult.ToJSON()
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize scan result: %w", err)
+	}
+	
+	return result, nil
 }
 
 // StopScan stops the current scan operation
