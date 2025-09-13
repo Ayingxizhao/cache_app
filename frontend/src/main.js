@@ -269,8 +269,13 @@ async function scanSingleLocation() {
         }
         
     } catch (error) {
-        showError('Scan failed: ' + error.message);
+        console.error('Scan error:', error);
+        showError(`Scan failed: ${error.message}`, true, () => {
+            hideError();
+            scanSingleLocation();
+        });
         setScanningState(false);
+        showProgress('Scan failed', false);
     }
 }
 
@@ -289,6 +294,13 @@ async function scanAllLocations() {
             loc.type === 'user' || loc.type === 'application'
         );
         
+        if (safeLocations.length === 0) {
+            showError('No safe cache locations found to scan');
+            setScanningState(false);
+            showProgress('No locations to scan', false);
+            return;
+        }
+        
         const result = await ScanMultipleCacheLocations(JSON.stringify(safeLocations));
         const scanResult = JSON.parse(result);
         
@@ -298,8 +310,13 @@ async function scanAllLocations() {
         showProgress('Scan completed!', false);
         
     } catch (error) {
-        showError('Full scan failed: ' + error.message);
+        console.error('Full scan error:', error);
+        showError(`Full scan failed: ${error.message}`, true, () => {
+            hideError();
+            scanAllLocations();
+        });
         setScanningState(false);
+        showProgress('Scan failed', false);
     }
 }
 
@@ -340,25 +357,32 @@ function displayScanResult(result) {
                     </div>
                 </div>
             </div>
-            <div class="locations-results">
-                ${result.locations.map(loc => `
-                    <div class="location-card">
-                        <div class="location-header">
-                            <h4>${loc.name}</h4>
-                            <div class="location-stats">
-                                <span class="stat">${loc.file_count.toLocaleString()} files</span>
-                                <span class="stat">${formatBytes(loc.total_size)}</span>
-                            </div>
+            <div class="cache-files-section">
+                <div class="section-header">
+                    <h3>Cache Files by Location</h3>
+                    <div class="file-controls">
+                        <div class="search-box">
+                            <input type="text" id="fileSearch" placeholder="Search files..." class="search-input">
+                            <span class="search-icon">🔍</span>
                         </div>
-                        <div class="location-details">
-                            <p class="location-path">${loc.path}</p>
-                            <div class="location-meta">
-                                <span>Duration: ${formatDuration(loc.scan_duration)}</span>
-                                ${loc.error ? `<span class="error-text">Error: ${loc.error}</span>` : ''}
-                            </div>
+                        <div class="filter-controls">
+                            <select id="sizeFilter" class="filter-select">
+                                <option value="">All Sizes</option>
+                                <option value="large">Large (>10MB)</option>
+                                <option value="medium">Medium (1-10MB)</option>
+                                <option value="small">Small (<1MB)</option>
+                            </select>
+                            <select id="typeFilter" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="file">Files Only</option>
+                                <option value="directory">Directories Only</option>
+                            </select>
                         </div>
                     </div>
-                `).join('')}
+                </div>
+                <div class="locations-results">
+                    ${result.locations.map(loc => createLocationCard(loc)).join('')}
+                </div>
             </div>
         `;
     } else {
@@ -387,15 +411,344 @@ function displayScanResult(result) {
                     </div>
                 </div>
             </div>
-            <div class="location-details">
-                <h4>${result.name}</h4>
-                <p class="location-path">${result.path}</p>
-                ${result.error ? `<p class="error-text">Error: ${result.error}</p>` : ''}
+            <div class="cache-files-section">
+                <div class="section-header">
+                    <h3>Cache Files</h3>
+                    <div class="file-controls">
+                        <div class="search-box">
+                            <input type="text" id="fileSearch" placeholder="Search files..." class="search-input">
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <div class="filter-controls">
+                            <select id="sizeFilter" class="filter-select">
+                                <option value="">All Sizes</option>
+                                <option value="large">Large (>10MB)</option>
+                                <option value="medium">Medium (1-10MB)</option>
+                                <option value="small">Small (<1MB)</option>
+                            </select>
+                            <select id="typeFilter" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="file">Files Only</option>
+                                <option value="directory">Directories Only</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="location-details">
+                    <h4>${result.name}</h4>
+                    <p class="location-path">${result.path}</p>
+                    ${result.error ? `<p class="error-text">Error: ${result.error}</p>` : ''}
+                    ${result.files ? createFileTable(result.files, result.id) : ''}
+                </div>
             </div>
         `;
     }
     
+    // Setup event listeners for the new controls
+    setupFileControls();
     exportButton.disabled = false;
+}
+
+function createLocationCard(location) {
+    const isLoading = location.files === undefined && !location.error;
+    
+    return `
+        <div class="location-card" data-location-id="${location.id}">
+            <div class="location-header" onclick="toggleLocationFiles('${location.id}')">
+                <div class="location-info">
+                    <h4>${location.name}</h4>
+                    <p class="location-path">${location.path}</p>
+                </div>
+                <div class="location-stats">
+                    ${isLoading ? 
+                        '<span class="stat loading-stat">Loading...</span>' :
+                        `<span class="stat">${location.file_count.toLocaleString()} files</span>
+                         <span class="stat">${formatBytes(location.total_size)}</span>
+                         <span class="stat">${formatDuration(location.scan_duration)}</span>`
+                    }
+                </div>
+                <div class="location-toggle">
+                    <span class="toggle-icon">▼</span>
+                </div>
+            </div>
+            <div class="location-files" id="files-${location.id}" style="display: none;">
+                ${isLoading ? 
+                    createLoadingTable() : 
+                    (location.files ? createFileTable(location.files, location.id) : '<p class="no-files">No files found</p>')
+                }
+            </div>
+            ${location.error ? `<div class="location-error">Error: ${location.error}</div>` : ''}
+        </div>
+    `;
+}
+
+function createFileTable(files, locationId) {
+    if (!files || files.length === 0) {
+        return '<p class="no-files">No files found</p>';
+    }
+    
+    // Sort files by size (largest first)
+    const sortedFiles = [...files].sort((a, b) => b.size - a.size);
+    
+    return `
+        <div class="file-table-container">
+            <table class="file-table" data-location-id="${locationId}">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="name">Name <span class="sort-icon">↕</span></th>
+                        <th class="sortable" data-sort="size">Size <span class="sort-icon">↕</span></th>
+                        <th class="sortable" data-sort="modified">Modified <span class="sort-icon">↕</span></th>
+                        <th class="sortable" data-sort="accessed">Accessed <span class="sort-icon">↕</span></th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${sortedFiles.map(file => createFileRow(file)).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function createLoadingTable() {
+    return `
+        <div class="file-table-container">
+            <div class="loading-table">
+                <div class="loading-header">
+                    <div class="loading-cell"></div>
+                    <div class="loading-cell"></div>
+                    <div class="loading-cell"></div>
+                    <div class="loading-cell"></div>
+                    <div class="loading-cell"></div>
+                    <div class="loading-cell"></div>
+                </div>
+                ${Array.from({length: 5}, () => `
+                    <div class="loading-row">
+                        <div class="loading-cell"></div>
+                        <div class="loading-cell"></div>
+                        <div class="loading-cell"></div>
+                        <div class="loading-cell"></div>
+                        <div class="loading-cell"></div>
+                        <div class="loading-cell"></div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function createFileRow(file) {
+    const isDirectory = file.is_dir;
+    const fileIcon = isDirectory ? '📁' : '📄';
+    const fileType = isDirectory ? 'Directory' : 'File';
+    const sizeDisplay = isDirectory ? '-' : formatBytes(file.size);
+    const modifiedDate = new Date(file.last_modified).toLocaleDateString();
+    const accessedDate = new Date(file.last_accessed).toLocaleDateString();
+    
+    return `
+        <tr class="file-row" data-file-path="${file.path}" data-file-size="${file.size}" data-file-type="${fileType.toLowerCase()}">
+            <td class="file-name">
+                <span class="file-icon">${fileIcon}</span>
+                <span class="file-name-text" title="${file.path}">${file.name}</span>
+            </td>
+            <td class="file-size">${sizeDisplay}</td>
+            <td class="file-modified">${modifiedDate}</td>
+            <td class="file-accessed">${accessedDate}</td>
+            <td class="file-type">${fileType}</td>
+            <td class="file-actions">
+                <button class="btn-icon" onclick="showFileDetails('${file.path}', '${file.name}', ${file.size}, '${file.last_modified}', '${file.last_accessed}', '${fileType}', '${file.permissions}')" title="View Details">
+                    ℹ️
+                </button>
+                <button class="btn-icon" onclick="revealInFinder('${file.path}')" title="Reveal in Finder">
+                    📂
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+function setupFileControls() {
+    // Search functionality
+    const searchInput = document.getElementById('fileSearch');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterFiles);
+    }
+    
+    // Filter functionality
+    const sizeFilter = document.getElementById('sizeFilter');
+    const typeFilter = document.getElementById('typeFilter');
+    
+    if (sizeFilter) {
+        sizeFilter.addEventListener('change', filterFiles);
+    }
+    if (typeFilter) {
+        typeFilter.addEventListener('change', filterFiles);
+    }
+    
+    // Sort functionality
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', () => sortTable(header));
+    });
+}
+
+function filterFiles() {
+    const searchTerm = document.getElementById('fileSearch')?.value.toLowerCase() || '';
+    const sizeFilter = document.getElementById('sizeFilter')?.value || '';
+    const typeFilter = document.getElementById('typeFilter')?.value || '';
+    
+    document.querySelectorAll('.file-row').forEach(row => {
+        const fileName = row.querySelector('.file-name-text').textContent.toLowerCase();
+        const fileSize = parseInt(row.dataset.fileSize);
+        const fileType = row.dataset.fileType;
+        
+        let show = true;
+        
+        // Search filter
+        if (searchTerm && !fileName.includes(searchTerm)) {
+            show = false;
+        }
+        
+        // Size filter
+        if (sizeFilter) {
+            const sizeInMB = fileSize / (1024 * 1024);
+            if (sizeFilter === 'large' && sizeInMB <= 10) show = false;
+            if (sizeFilter === 'medium' && (sizeInMB <= 1 || sizeInMB > 10)) show = false;
+            if (sizeFilter === 'small' && sizeInMB >= 1) show = false;
+        }
+        
+        // Type filter
+        if (typeFilter && fileType !== typeFilter) {
+            show = false;
+        }
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function sortTable(header) {
+    const table = header.closest('table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const sortBy = header.dataset.sort;
+    const isAscending = header.classList.contains('sort-asc');
+    
+    // Clear other sort classes
+    table.querySelectorAll('.sortable').forEach(h => {
+        h.classList.remove('sort-asc', 'sort-desc');
+    });
+    
+    // Set current sort direction
+    header.classList.add(isAscending ? 'sort-desc' : 'sort-asc');
+    
+    rows.sort((a, b) => {
+        let aVal, bVal;
+        
+        switch (sortBy) {
+            case 'name':
+                aVal = a.querySelector('.file-name-text').textContent.toLowerCase();
+                bVal = b.querySelector('.file-name-text').textContent.toLowerCase();
+                break;
+            case 'size':
+                aVal = parseInt(a.dataset.fileSize);
+                bVal = parseInt(b.dataset.fileSize);
+                break;
+            case 'modified':
+                aVal = new Date(a.querySelector('.file-modified').textContent);
+                bVal = new Date(b.querySelector('.file-modified').textContent);
+                break;
+            case 'accessed':
+                aVal = new Date(a.querySelector('.file-accessed').textContent);
+                bVal = new Date(b.querySelector('.file-accessed').textContent);
+                break;
+            default:
+                return 0;
+        }
+        
+        if (aVal < bVal) return isAscending ? 1 : -1;
+        if (aVal > bVal) return isAscending ? -1 : 1;
+        return 0;
+    });
+    
+    // Re-append sorted rows
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+function toggleLocationFiles(locationId) {
+    const filesDiv = document.getElementById(`files-${locationId}`);
+    const toggleIcon = document.querySelector(`[data-location-id="${locationId}"] .toggle-icon`);
+    
+    if (filesDiv.style.display === 'none') {
+        filesDiv.style.display = 'block';
+        toggleIcon.textContent = '▲';
+    } else {
+        filesDiv.style.display = 'none';
+        toggleIcon.textContent = '▼';
+    }
+}
+
+function showFileDetails(path, name, size, modified, accessed, type, permissions) {
+    const modal = document.createElement('div');
+    modal.className = 'file-details-modal';
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeFileDetails()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>File Details</h3>
+                    <button class="modal-close" onclick="closeFileDetails()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="detail-row">
+                        <span class="detail-label">Name:</span>
+                        <span class="detail-value">${name}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Path:</span>
+                        <span class="detail-value" title="${path}">${path}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Size:</span>
+                        <span class="detail-value">${formatBytes(size)}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Type:</span>
+                        <span class="detail-value">${type}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Modified:</span>
+                        <span class="detail-value">${new Date(modified).toLocaleString()}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Accessed:</span>
+                        <span class="detail-value">${new Date(accessed).toLocaleString()}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Permissions:</span>
+                        <span class="detail-value">${permissions}</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="revealInFinder('${path}')">Reveal in Finder</button>
+                    <button class="btn btn-secondary" onclick="closeFileDetails()">Close</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function closeFileDetails() {
+    const modal = document.querySelector('.file-details-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+function revealInFinder(path) {
+    // This would need to be implemented in the backend
+    console.log('Reveal in Finder:', path);
+    showError('Reveal in Finder functionality not yet implemented');
 }
 
 function setScanningState(scanning) {
@@ -425,8 +778,21 @@ function showProgress(message, show = true) {
         progressText.textContent = message;
         progressContainer.style.display = 'block';
         updateProgressTime();
+        
+        // Add loading animation
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) {
+            progressBar.style.width = '100%';
+            progressBar.style.animation = 'pulse 2s infinite';
+        }
     } else {
         progressContainer.style.display = 'none';
+        
+        // Remove loading animation
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) {
+            progressBar.style.animation = 'none';
+        }
     }
 }
 
@@ -444,22 +810,65 @@ function updateProgressTime() {
     }
 }
 
-function showError(message) {
+function showError(message, isRetryable = false, retryCallback = null) {
     const errorContainer = document.getElementById('errorContainer');
     const errorMessage = document.getElementById('errorMessage');
     
-    errorMessage.textContent = message;
+    // Create enhanced error content
+    const errorContent = `
+        <div class="error-icon">⚠️</div>
+        <div class="error-content">
+            <h4>Error</h4>
+            <p>${message}</p>
+            ${isRetryable && retryCallback ? `
+                <button class="btn btn-outline retry-button" onclick="retryCallback()">
+                    <span class="btn-icon">🔄</span>
+                    Retry
+                </button>
+            ` : ''}
+        </div>
+        <button id="errorClose" class="error-close">×</button>
+    `;
+    
+    errorContainer.innerHTML = errorContent;
     errorContainer.style.display = 'flex';
     
-    // Auto-hide after 10 seconds
-    setTimeout(() => {
-        hideError();
-    }, 10000);
+    // Setup close button
+    const closeButton = errorContainer.querySelector('#errorClose');
+    if (closeButton) {
+        closeButton.addEventListener('click', hideError);
+    }
+    
+    // Auto-hide after 10 seconds (unless retryable)
+    if (!isRetryable) {
+        setTimeout(() => {
+            hideError();
+        }, 10000);
+    }
 }
 
 function hideError() {
     const errorContainer = document.getElementById('errorContainer');
     errorContainer.style.display = 'none';
+}
+
+function showErrorState(containerId, message, isRetryable = false, retryCallback = null) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = `
+        <div class="error-state">
+            <div class="error-icon">⚠️</div>
+            <h3>Something went wrong</h3>
+            <p>${message}</p>
+            ${isRetryable && retryCallback ? `
+                <button class="btn btn-outline retry-button" onclick="retryCallback()">
+                    <span class="btn-icon">🔄</span>
+                    Try Again
+                </button>
+            ` : ''}
+        </div>
+    `;
 }
 
 function startProgressPolling() {
