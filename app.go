@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	
+	"cache_app/pkg/safety"
 )
 
 // App struct
@@ -295,4 +297,126 @@ func (a *App) GetSystemInfo() (string, error) {
 	}
 	
 	return string(result), nil
+}
+
+// GetSafetyClassificationSummary returns safety classification summary for a specific location
+func (a *App) GetSafetyClassificationSummary(locationID string) (string, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	
+	if a.lastScanResult == nil {
+		return "", fmt.Errorf("no scan result available")
+	}
+	
+	if a.lastScanResult.ID != locationID {
+		return "", fmt.Errorf("location ID %s does not match last scan result", locationID)
+	}
+	
+	summary := a.lastScanResult.GetSafetyClassificationSummary()
+	result, err := json.Marshal(summary)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal safety classification summary: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// ClassifyFileSafety classifies the safety of a specific file
+func (a *App) ClassifyFileSafety(filePath string) (string, error) {
+	// Get file info
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to get file info for %s: %w", filePath, err)
+	}
+	
+	// Create file metadata
+	fileMetadata := safety.FileMetadata{
+		Name:         info.Name(),
+		Path:         filePath,
+		Size:         info.Size(),
+		LastModified: info.ModTime(),
+		LastAccessed: getLastAccessTime(info),
+		IsDir:        info.IsDir(),
+		Permissions:  info.Mode().String(),
+	}
+	
+	// Classify the file
+	classifier := safety.NewDefaultSafetyClassifier()
+	classification := classifier.ClassifyFile(fileMetadata)
+	
+	result, err := json.Marshal(classification)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal classification result: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// GetSafetyClassificationRules returns the current safety classification rules
+func (a *App) GetSafetyClassificationRules() (string, error) {
+	config := safety.DefaultConfig()
+	
+	rules := map[string]interface{}{
+		"safe_age_threshold_days":    int(config.SafeAgeThreshold.Hours() / 24),
+		"caution_age_threshold_days": int(config.CautionAgeThreshold.Hours() / 24),
+		"large_file_threshold_mb":    config.LargeFileThreshold / (1024 * 1024),
+		"system_critical_paths":      config.SystemCriticalPaths,
+		"temp_dir_patterns":          config.TempDirPatterns,
+		"dev_cache_patterns":         config.DevCachePatterns,
+	}
+	
+	result, err := json.Marshal(rules)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal classification rules: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// GetFilesBySafetyLevel returns files filtered by safety level from the last scan
+func (a *App) GetFilesBySafetyLevel(locationID, safetyLevel string) (string, error) {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	
+	if a.lastScanResult == nil {
+		return "", fmt.Errorf("no scan result available")
+	}
+	
+	if a.lastScanResult.ID != locationID {
+		return "", fmt.Errorf("location ID %s does not match last scan result", locationID)
+	}
+	
+	var filteredFiles []CacheFile
+	var targetLevel safety.SafetyLevel
+	
+	switch safetyLevel {
+	case "Safe":
+		targetLevel = safety.Safe
+	case "Caution":
+		targetLevel = safety.Caution
+	case "Risky":
+		targetLevel = safety.Risky
+	default:
+		return "", fmt.Errorf("invalid safety level: %s. Must be Safe, Caution, or Risky", safetyLevel)
+	}
+	
+	for _, file := range a.lastScanResult.Files {
+		if !file.IsDir && file.SafetyClassification != nil && file.SafetyClassification.Level == targetLevel {
+			filteredFiles = append(filteredFiles, file)
+		}
+	}
+	
+	result := map[string]interface{}{
+		"location_id":     locationID,
+		"safety_level":    safetyLevel,
+		"files":           filteredFiles,
+		"total_files":     len(filteredFiles),
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal filtered files result: %w", err)
+	}
+	
+	return string(jsonResult), nil
 }

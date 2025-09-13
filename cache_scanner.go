@@ -9,18 +9,21 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	
+	"cache_app/pkg/safety"
 )
 
 // CacheFile represents metadata for a single cache file
 type CacheFile struct {
-	Name         string    `json:"name"`
-	Path         string    `json:"path"`
-	Size         int64     `json:"size"`
-	LastModified time.Time `json:"last_modified"`
-	LastAccessed time.Time `json:"last_accessed"`
-	IsDir        bool      `json:"is_dir"`
-	Permissions  string    `json:"permissions"`
-	Error        string    `json:"error,omitempty"`
+	Name              string                    `json:"name"`
+	Path              string                    `json:"path"`
+	Size              int64                     `json:"size"`
+	LastModified      time.Time                 `json:"last_modified"`
+	LastAccessed      time.Time                 `json:"last_accessed"`
+	IsDir             bool                      `json:"is_dir"`
+	Permissions       string                    `json:"permissions"`
+	Error             string                    `json:"error,omitempty"`
+	SafetyClassification *safety.SafetyClassification `json:"safety_classification,omitempty"`
 }
 
 // CacheLocation represents a cache directory with its files and metadata
@@ -61,18 +64,20 @@ type ScanResult struct {
 
 // CacheScanner handles scanning of cache directories
 type CacheScanner struct {
-	mu            sync.RWMutex
-	progressChan  chan ScanProgress
-	stopChan      chan bool
-	isScanning    bool
-	scanStartTime time.Time
+	mu               sync.RWMutex
+	progressChan     chan ScanProgress
+	stopChan         chan bool
+	isScanning       bool
+	scanStartTime    time.Time
+	safetyClassifier *safety.SafetyClassifier
 }
 
 // NewCacheScanner creates a new cache scanner instance
 func NewCacheScanner() *CacheScanner {
 	return &CacheScanner{
-		progressChan: make(chan ScanProgress, 100),
-		stopChan:     make(chan bool, 1),
+		progressChan:     make(chan ScanProgress, 100),
+		stopChan:         make(chan bool, 1),
+		safetyClassifier: safety.NewDefaultSafetyClassifier(),
 	}
 }
 
@@ -188,6 +193,21 @@ func (cs *CacheScanner) ScanLocation(locationID, locationName, path string) (*Ca
 			LastAccessed: getLastAccessTime(info),
 			IsDir:        d.IsDir(),
 			Permissions:  info.Mode().String(),
+		}
+		
+		// Add safety classification for files (not directories)
+		if !d.IsDir() {
+			fileMetadata := safety.FileMetadata{
+				Name:         d.Name(),
+				Path:         path,
+				Size:         info.Size(),
+				LastModified: info.ModTime(),
+				LastAccessed: getLastAccessTime(info),
+				IsDir:        d.IsDir(),
+				Permissions:  info.Mode().String(),
+			}
+			classification := cs.safetyClassifier.ClassifyFile(fileMetadata)
+			cacheFile.SafetyClassification = &classification
 		}
 		
 		// Add to location
@@ -369,4 +389,43 @@ func (sr *ScanResult) ToJSON() (string, error) {
 		return "", err
 	}
 	return string(data), nil
+}
+
+// GetSafetyClassificationSummary returns a summary of safety classifications for a cache location
+func (cl *CacheLocation) GetSafetyClassificationSummary() map[string]interface{} {
+	var files []safety.FileMetadata
+	classifications := make(map[string]safety.SafetyClassification)
+	
+	for _, file := range cl.Files {
+		if !file.IsDir && file.SafetyClassification != nil {
+			fileMetadata := safety.FileMetadata{
+				Name:         file.Name,
+				Path:         file.Path,
+				Size:         file.Size,
+				LastModified: file.LastModified,
+				LastAccessed: file.LastAccessed,
+				IsDir:        file.IsDir,
+				Permissions:  file.Permissions,
+			}
+			files = append(files, fileMetadata)
+			classifications[file.Path] = *file.SafetyClassification
+		}
+	}
+	
+	if len(classifications) == 0 {
+		return map[string]interface{}{
+			"total_files":      0,
+			"safe_count":       0,
+			"caution_count":    0,
+			"risky_count":      0,
+			"average_confidence": 0,
+			"safe_percentage":    0,
+			"caution_percentage": 0,
+			"risky_percentage":   0,
+		}
+	}
+	
+	// Create a temporary classifier to get summary
+	classifier := safety.NewDefaultSafetyClassifier()
+	return classifier.GetClassificationSummary(classifications)
 }
