@@ -1,6 +1,7 @@
 package safety
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -36,6 +37,18 @@ type SafetyClassification struct {
 	Confidence  int         `json:"confidence"`  // 0-100 percentage
 	Explanation string      `json:"explanation"` // Human-readable explanation
 	Reasons     []string    `json:"reasons"`     // List of specific reasons for the classification
+}
+
+// MarshalJSON customizes JSON serialization for SafetyClassification
+func (sc SafetyClassification) MarshalJSON() ([]byte, error) {
+	type Alias SafetyClassification
+	return json.Marshal(&struct {
+		Level string `json:"level"`
+		*Alias
+	}{
+		Level: sc.Level.String(),
+		Alias: (*Alias)(&sc),
+	})
 }
 
 // FileMetadata represents the metadata needed for safety classification

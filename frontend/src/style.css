@@ -904,6 +904,262 @@ body {
     color: var(--error-color);
 }
 
+/* Safety Classification Styles */
+.safety-summary {
+    margin-top: 24px;
+    padding: 20px;
+    background: var(--tertiary-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.safety-summary h3 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.safety-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.safety-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.safety-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.safe-card {
+    background: rgba(48, 209, 88, 0.1);
+    border-color: #30d158;
+}
+
+.caution-card {
+    background: rgba(255, 149, 0, 0.1);
+    border-color: #ff9500;
+}
+
+.risky-card {
+    background: rgba(255, 59, 48, 0.1);
+    border-color: #ff3b30;
+}
+
+.safety-card .safety-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.safety-content {
+    flex: 1;
+}
+
+.safety-content h4 {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.safety-content p {
+    margin: 0 0 4px 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.safety-size {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+/* Safety Indicators in File Table */
+.file-safety {
+    text-align: center;
+    padding: 8px;
+}
+
+.safety-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: var(--border-radius-small);
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    cursor: help;
+}
+
+.safety-indicator:hover {
+    background: var(--tertiary-bg);
+    transform: scale(1.05);
+}
+
+.safety-confidence {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Safety Level Row Styling */
+.file-row.safety-safe {
+    border-left: 3px solid #30d158;
+}
+
+.file-row.safety-caution {
+    border-left: 3px solid #ff9500;
+}
+
+.file-row.safety-risky {
+    border-left: 3px solid #ff3b30;
+}
+
+.file-row.selected {
+    background: rgba(0, 122, 255, 0.1);
+    border-left-color: var(--accent-bg) !important;
+}
+
+/* Bulk Actions */
+.bulk-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btn-success {
+    background: #30d158;
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: #28cd41;
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-medium);
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+/* Selection Summary */
+.selection-summary {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--tertiary-bg);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+}
+
+.selection-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.selection-count,
+.selection-size {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.selection-count {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* File Details Modal Safety Information */
+.safety-row {
+    background: var(--tertiary-bg);
+    border-radius: var(--border-radius-small);
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.safety-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.safety-level {
+    font-size: 16px;
+}
+
+.safety-confidence {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: normal;
+}
+
+.safety-explanation {
+    font-style: italic;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.safety-reasons {
+    margin: 8px 0 0 0;
+    padding-left: 16px;
+}
+
+.safety-reasons li {
+    margin-bottom: 4px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* File Checkboxes */
+.file-checkbox {
+    margin-right: 8px;
+    accent-color: var(--accent-bg);
+}
+
+/* Responsive Safety Styles */
+@media (max-width: 768px) {
+    .safety-summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .safety-card {
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+    
+    .bulk-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .selection-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .safety-detail {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+}
+
 .error-state .error-icon {
     font-size: 48px;
     margin-bottom: 16px;

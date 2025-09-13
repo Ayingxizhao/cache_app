@@ -1,6 +1,6 @@
 import './style.css';
 import './app.css';
-import { ScanCacheLocation, ScanMultipleCacheLocations, GetCacheLocationsFromConfig, GetSystemInfo, IsScanning, StopScan, GetScanProgress, GetLastScanResult } from '../wailsjs/go/main/App.js';
+import { ScanCacheLocation, ScanMultipleCacheLocations, GetCacheLocationsFromConfig, GetSystemInfo, IsScanning, StopScan, GetScanProgress, GetLastScanResult, GetSafetyClassificationSummary, ClassifyFileSafety, GetSafetyClassificationRules, GetFilesBySafetyLevel } from '../wailsjs/go/main/App.js';
 
 // Global state
 let isScanning = false;
@@ -320,11 +320,58 @@ async function scanAllLocations() {
     }
 }
 
+// Function to calculate safety summary from files
+function calculateSafetySummary(files) {
+    let safeCount = 0, cautionCount = 0, riskyCount = 0, totalFiles = 0;
+    let safeSize = 0, cautionSize = 0, riskySize = 0;
+    
+    files.forEach(file => {
+        if (!file.is_dir && file.safety_classification) {
+            totalFiles++;
+            const size = file.size || 0;
+            
+            // Ensure safety level is a string and handle case variations
+            const safetyLevel = String(file.safety_classification.level || '').trim();
+            switch (safetyLevel) {
+                case 'Safe':
+                    safeCount++;
+                    safeSize += size;
+                    break;
+                case 'Caution':
+                    cautionCount++;
+                    cautionSize += size;
+                    break;
+                case 'Risky':
+                    riskyCount++;
+                    riskySize += size;
+                    break;
+            }
+        }
+    });
+    
+    return {
+        totalFiles,
+        safeCount,
+        cautionCount,
+        riskyCount,
+        safeSize,
+        cautionSize,
+        riskySize,
+        safePercentage: totalFiles > 0 ? Math.round((safeCount / totalFiles) * 100) : 0,
+        cautionPercentage: totalFiles > 0 ? Math.round((cautionCount / totalFiles) * 100) : 0,
+        riskyPercentage: totalFiles > 0 ? Math.round((riskyCount / totalFiles) * 100) : 0
+    };
+}
+
 function displayScanResult(result) {
     const resultsDiv = document.getElementById('scanResults');
     const exportButton = document.getElementById('exportButton');
     
     if (result.locations) {
+        // Calculate overall safety summary
+        const allFiles = result.locations.flatMap(loc => loc.files || []);
+        const safetySummary = calculateSafetySummary(allFiles);
+        
         // Multiple locations result
         resultsDiv.innerHTML = `
             <div class="results-summary">
@@ -357,6 +404,35 @@ function displayScanResult(result) {
                     </div>
                 </div>
             </div>
+            <div class="safety-summary">
+                <h3>Safety Analysis</h3>
+                <div class="safety-summary-grid">
+                    <div class="safety-card safe-card">
+                        <div class="safety-icon">✅</div>
+                        <div class="safety-content">
+                            <h4>${safetySummary.safeCount}</h4>
+                            <p>Safe Files (${safetySummary.safePercentage}%)</p>
+                            <span class="safety-size">${formatBytes(safetySummary.safeSize)}</span>
+                        </div>
+                    </div>
+                    <div class="safety-card caution-card">
+                        <div class="safety-icon">⚠️</div>
+                        <div class="safety-content">
+                            <h4>${safetySummary.cautionCount}</h4>
+                            <p>Caution Files (${safetySummary.cautionPercentage}%)</p>
+                            <span class="safety-size">${formatBytes(safetySummary.cautionSize)}</span>
+                        </div>
+                    </div>
+                    <div class="safety-card risky-card">
+                        <div class="safety-icon">🚫</div>
+                        <div class="safety-content">
+                            <h4>${safetySummary.riskyCount}</h4>
+                            <p>Risky Files (${safetySummary.riskyPercentage}%)</p>
+                            <span class="safety-size">${formatBytes(safetySummary.riskySize)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="cache-files-section">
                 <div class="section-header">
                     <h3>Cache Files by Location</h3>
@@ -377,6 +453,22 @@ function displayScanResult(result) {
                                 <option value="file">Files Only</option>
                                 <option value="directory">Directories Only</option>
                             </select>
+                            <select id="safetyFilter" class="filter-select">
+                                <option value="">All Safety Levels</option>
+                                <option value="Safe">✅ Safe</option>
+                                <option value="Caution">⚠️ Caution</option>
+                                <option value="Risky">🚫 Risky</option>
+                            </select>
+                        </div>
+                        <div class="bulk-actions">
+                            <button id="selectAllSafeButton" class="btn btn-success" onclick="selectAllSafeFiles()">
+                                <span class="btn-icon">✅</span>
+                                Select All Safe Items
+                            </button>
+                            <button id="clearSelectionButton" class="btn btn-outline" onclick="clearFileSelection()">
+                                <span class="btn-icon">🔲</span>
+                                Clear Selection
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -386,6 +478,9 @@ function displayScanResult(result) {
             </div>
         `;
     } else {
+        // Calculate safety summary for single location
+        const safetySummary = calculateSafetySummary(result.files || []);
+        
         // Single location result
         resultsDiv.innerHTML = `
             <div class="results-summary">
@@ -411,6 +506,35 @@ function displayScanResult(result) {
                     </div>
                 </div>
             </div>
+            <div class="safety-summary">
+                <h3>Safety Analysis</h3>
+                <div class="safety-summary-grid">
+                    <div class="safety-card safe-card">
+                        <div class="safety-icon">✅</div>
+                        <div class="safety-content">
+                            <h4>${safetySummary.safeCount}</h4>
+                            <p>Safe Files (${safetySummary.safePercentage}%)</p>
+                            <span class="safety-size">${formatBytes(safetySummary.safeSize)}</span>
+                        </div>
+                    </div>
+                    <div class="safety-card caution-card">
+                        <div class="safety-icon">⚠️</div>
+                        <div class="safety-content">
+                            <h4>${safetySummary.cautionCount}</h4>
+                            <p>Caution Files (${safetySummary.cautionPercentage}%)</p>
+                            <span class="safety-size">${formatBytes(safetySummary.cautionSize)}</span>
+                        </div>
+                    </div>
+                    <div class="safety-card risky-card">
+                        <div class="safety-icon">🚫</div>
+                        <div class="safety-content">
+                            <h4>${safetySummary.riskyCount}</h4>
+                            <p>Risky Files (${safetySummary.riskyPercentage}%)</p>
+                            <span class="safety-size">${formatBytes(safetySummary.riskySize)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="cache-files-section">
                 <div class="section-header">
                     <h3>Cache Files</h3>
@@ -431,6 +555,22 @@ function displayScanResult(result) {
                                 <option value="file">Files Only</option>
                                 <option value="directory">Directories Only</option>
                             </select>
+                            <select id="safetyFilter" class="filter-select">
+                                <option value="">All Safety Levels</option>
+                                <option value="Safe">✅ Safe</option>
+                                <option value="Caution">⚠️ Caution</option>
+                                <option value="Risky">🚫 Risky</option>
+                            </select>
+                        </div>
+                        <div class="bulk-actions">
+                            <button id="selectAllSafeButton" class="btn btn-success" onclick="selectAllSafeFiles()">
+                                <span class="btn-icon">✅</span>
+                                Select All Safe Items
+                            </button>
+                            <button id="clearSelectionButton" class="btn btn-outline" onclick="clearFileSelection()">
+                                <span class="btn-icon">🔲</span>
+                                Clear Selection
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -500,6 +640,7 @@ function createFileTable(files, locationId) {
                         <th class="sortable" data-sort="modified">Modified <span class="sort-icon">↕</span></th>
                         <th class="sortable" data-sort="accessed">Accessed <span class="sort-icon">↕</span></th>
                         <th>Type</th>
+                        <th class="sortable" data-sort="safety">Safety <span class="sort-icon">↕</span></th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -546,8 +687,27 @@ function createFileRow(file) {
     const modifiedDate = new Date(file.last_modified).toLocaleDateString();
     const accessedDate = new Date(file.last_accessed).toLocaleDateString();
     
+    // Safety classification display
+    let safetyDisplay = '';
+    let safetyClass = '';
+    let safetyLevel = 'none';
+    if (!isDirectory && file.safety_classification) {
+        const safety = file.safety_classification;
+        // Ensure safety.level is a string and convert to string if needed
+        safetyLevel = String(safety.level || '');
+        const safetyIcon = getSafetyIcon(safetyLevel);
+        const safetyColor = getSafetyColor(safetyLevel);
+        safetyDisplay = `
+            <div class="safety-indicator" data-safety-level="${safetyLevel}" title="${safety.explanation || ''}">
+                <span class="safety-icon" style="color: ${safetyColor}">${safetyIcon}</span>
+                <span class="safety-confidence">${safety.confidence || 0}%</span>
+            </div>
+        `;
+        safetyClass = `safety-${safetyLevel.toLowerCase()}`;
+    }
+    
     return `
-        <tr class="file-row" data-file-path="${file.path}" data-file-size="${file.size}" data-file-type="${fileType.toLowerCase()}">
+        <tr class="file-row ${safetyClass}" data-file-path="${file.path}" data-file-size="${file.size}" data-file-type="${fileType.toLowerCase()}" data-safety-level="${safetyLevel || 'none'}">
             <td class="file-name">
                 <span class="file-icon">${fileIcon}</span>
                 <span class="file-name-text" title="${file.path}">${file.name}</span>
@@ -556,8 +716,11 @@ function createFileRow(file) {
             <td class="file-modified">${modifiedDate}</td>
             <td class="file-accessed">${accessedDate}</td>
             <td class="file-type">${fileType}</td>
+            <td class="file-safety">
+                ${safetyDisplay}
+            </td>
             <td class="file-actions">
-                <button class="btn-icon" onclick="showFileDetails('${file.path}', '${file.name}', ${file.size}, '${file.last_modified}', '${file.last_accessed}', '${fileType}', '${file.permissions}')" title="View Details">
+                <button class="btn-icon" onclick="showFileDetails('${file.path}', '${file.name}', ${file.size}, '${file.last_modified}', '${file.last_accessed}', '${fileType}', '${file.permissions}', '${file.safety_classification ? JSON.stringify(file.safety_classification).replace(/'/g, "&#39;") : ''}')" title="View Details">
                     ℹ️
                 </button>
                 <button class="btn-icon" onclick="revealInFinder('${file.path}')" title="Reveal in Finder">
@@ -566,6 +729,40 @@ function createFileRow(file) {
             </td>
         </tr>
     `;
+}
+
+// Safety utility functions
+function getSafetyIcon(level) {
+    // Ensure level is a string and handle case variations
+    const safeLevel = String(level || '').trim();
+    switch (safeLevel) {
+        case 'Safe': return '✅';
+        case 'Caution': return '⚠️';
+        case 'Risky': return '🚫';
+        default: return '❓';
+    }
+}
+
+function getSafetyColor(level) {
+    // Ensure level is a string and handle case variations
+    const safeLevel = String(level || '').trim();
+    switch (safeLevel) {
+        case 'Safe': return '#30d158';
+        case 'Caution': return '#ff9500';
+        case 'Risky': return '#ff3b30';
+        default: return '#a0a0a0';
+    }
+}
+
+function getSafetyLevelOrder(level) {
+    // Ensure level is a string and handle case variations
+    const safeLevel = String(level || '').trim();
+    switch (safeLevel) {
+        case 'Safe': return 1;
+        case 'Caution': return 2;
+        case 'Risky': return 3;
+        default: return 4;
+    }
 }
 
 function setupFileControls() {
@@ -578,12 +775,16 @@ function setupFileControls() {
     // Filter functionality
     const sizeFilter = document.getElementById('sizeFilter');
     const typeFilter = document.getElementById('typeFilter');
+    const safetyFilter = document.getElementById('safetyFilter');
     
     if (sizeFilter) {
         sizeFilter.addEventListener('change', filterFiles);
     }
     if (typeFilter) {
         typeFilter.addEventListener('change', filterFiles);
+    }
+    if (safetyFilter) {
+        safetyFilter.addEventListener('change', filterFiles);
     }
     
     // Sort functionality
@@ -596,11 +797,13 @@ function filterFiles() {
     const searchTerm = document.getElementById('fileSearch')?.value.toLowerCase() || '';
     const sizeFilter = document.getElementById('sizeFilter')?.value || '';
     const typeFilter = document.getElementById('typeFilter')?.value || '';
+    const safetyFilter = document.getElementById('safetyFilter')?.value || '';
     
     document.querySelectorAll('.file-row').forEach(row => {
         const fileName = row.querySelector('.file-name-text').textContent.toLowerCase();
         const fileSize = parseInt(row.dataset.fileSize);
         const fileType = row.dataset.fileType;
+        const safetyLevel = row.dataset.safetyLevel;
         
         let show = true;
         
@@ -619,6 +822,11 @@ function filterFiles() {
         
         // Type filter
         if (typeFilter && fileType !== typeFilter) {
+            show = false;
+        }
+        
+        // Safety filter
+        if (safetyFilter && safetyLevel !== safetyFilter) {
             show = false;
         }
         
@@ -661,6 +869,10 @@ function sortTable(header) {
                 aVal = new Date(a.querySelector('.file-accessed').textContent);
                 bVal = new Date(b.querySelector('.file-accessed').textContent);
                 break;
+            case 'safety':
+                aVal = getSafetyLevelOrder(a.dataset.safetyLevel);
+                bVal = getSafetyLevelOrder(b.dataset.safetyLevel);
+                break;
             default:
                 return 0;
         }
@@ -687,9 +899,48 @@ function toggleLocationFiles(locationId) {
     }
 }
 
-function showFileDetails(path, name, size, modified, accessed, type, permissions) {
+function showFileDetails(path, name, size, modified, accessed, type, permissions, safetyData = '') {
     const modal = document.createElement('div');
     modal.className = 'file-details-modal';
+    
+    let safetyDetails = '';
+    if (safetyData) {
+        try {
+            const safety = JSON.parse(safetyData.replace(/&#39;/g, "'"));
+            const safetyIcon = getSafetyIcon(safety.level);
+            const safetyColor = getSafetyColor(safety.level);
+            
+            safetyDetails = `
+                <div class="detail-row safety-row">
+                    <span class="detail-label">Safety Level:</span>
+                    <span class="detail-value">
+                        <div class="safety-detail" style="color: ${safetyColor}">
+                            <span class="safety-icon">${safetyIcon}</span>
+                            <span class="safety-level">${safety.level}</span>
+                            <span class="safety-confidence">(${safety.confidence}% confidence)</span>
+                        </div>
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Safety Explanation:</span>
+                    <span class="detail-value safety-explanation">${safety.explanation}</span>
+                </div>
+                ${safety.reasons && safety.reasons.length > 0 ? `
+                    <div class="detail-row">
+                        <span class="detail-label">Safety Reasons:</span>
+                        <span class="detail-value">
+                            <ul class="safety-reasons">
+                                ${safety.reasons.map(reason => `<li>${reason}</li>`).join('')}
+                            </ul>
+                        </span>
+                    </div>
+                ` : ''}
+            `;
+        } catch (error) {
+            console.error('Error parsing safety data:', error);
+        }
+    }
+    
     modal.innerHTML = `
         <div class="modal-overlay" onclick="closeFileDetails()">
             <div class="modal-content" onclick="event.stopPropagation()">
@@ -726,6 +977,7 @@ function showFileDetails(path, name, size, modified, accessed, type, permissions
                         <span class="detail-label">Permissions:</span>
                         <span class="detail-value">${permissions}</span>
                     </div>
+                    ${safetyDetails}
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-outline" onclick="revealInFinder('${path}')">Reveal in Finder</button>
@@ -749,6 +1001,90 @@ function revealInFinder(path) {
     // This would need to be implemented in the backend
     console.log('Reveal in Finder:', path);
     showError('Reveal in Finder functionality not yet implemented');
+}
+
+// Bulk operations for file selection
+function selectAllSafeFiles() {
+    const safeRows = document.querySelectorAll('.file-row[data-safety-level="Safe"]');
+    safeRows.forEach(row => {
+        row.classList.add('selected');
+        // Add checkbox if not exists
+        if (!row.querySelector('.file-checkbox')) {
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'file-checkbox';
+            checkbox.checked = true;
+            checkbox.addEventListener('change', (e) => {
+                row.classList.toggle('selected', e.target.checked);
+            });
+            row.querySelector('.file-name').prepend(checkbox);
+        } else {
+            row.querySelector('.file-checkbox').checked = true;
+        }
+    });
+    
+    updateSelectionCount();
+}
+
+function clearFileSelection() {
+    document.querySelectorAll('.file-row').forEach(row => {
+        row.classList.remove('selected');
+        const checkbox = row.querySelector('.file-checkbox');
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+    });
+    
+    updateSelectionCount();
+}
+
+function updateSelectionCount() {
+    const selectedCount = document.querySelectorAll('.file-row.selected').length;
+    const totalSize = Array.from(document.querySelectorAll('.file-row.selected')).reduce((total, row) => {
+        return total + parseInt(row.dataset.fileSize || 0);
+    }, 0);
+    
+    // Update or create selection summary
+    let summary = document.querySelector('.selection-summary');
+    if (!summary && selectedCount > 0) {
+        summary = document.createElement('div');
+        summary.className = 'selection-summary';
+        document.querySelector('.file-controls').appendChild(summary);
+    }
+    
+    if (summary) {
+        if (selectedCount > 0) {
+            summary.innerHTML = `
+                <div class="selection-info">
+                    <span class="selection-count">${selectedCount} files selected</span>
+                    <span class="selection-size">Total: ${formatBytes(totalSize)}</span>
+                    <button class="btn btn-danger btn-sm" onclick="deleteSelectedFiles()">
+                        <span class="btn-icon">🗑️</span>
+                        Delete Selected
+                    </button>
+                </div>
+            `;
+        } else {
+            summary.remove();
+        }
+    }
+}
+
+function deleteSelectedFiles() {
+    const selectedFiles = Array.from(document.querySelectorAll('.file-row.selected'));
+    if (selectedFiles.length === 0) {
+        showError('No files selected for deletion');
+        return;
+    }
+    
+    const filePaths = selectedFiles.map(row => row.dataset.filePath);
+    const confirmMessage = `Are you sure you want to delete ${filePaths.length} selected files?\n\nThis action cannot be undone.`;
+    
+    if (confirm(confirmMessage)) {
+        // TODO: Implement actual file deletion
+        showError('File deletion functionality not yet implemented in the backend');
+        console.log('Files to delete:', filePaths);
+    }
 }
 
 function setScanningState(scanning) {
