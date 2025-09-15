@@ -1177,7 +1177,7 @@ func (a *App) DeleteBackupSession(sessionID string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create backup manager: %w", err)
 	}
-	if err := manager.saveManifest(manifest); err != nil {
+	if err := manager.SaveManifest(manifest); err != nil {
 		return "", fmt.Errorf("failed to update manifest: %w", err)
 	}
 

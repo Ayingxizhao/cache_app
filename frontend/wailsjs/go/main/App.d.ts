@@ -5,9 +5,13 @@ export function BackupFiles(arg1:string,arg2:string):Promise<string>;
 
 export function ClassifyFileSafety(arg1:string):Promise<string>;
 
+export function CleanupBackupsByAge(arg1:number):Promise<string>;
+
 export function CleanupOldBackups(arg1:number):Promise<string>;
 
 export function ConfirmDeletion(arg1:string,arg2:string,arg3:boolean,arg4:boolean,arg5:boolean):Promise<string>;
+
+export function DeleteBackupSession(arg1:string):Promise<string>;
 
 export function DeleteFilesWithBackup(arg1:string,arg2:string):Promise<string>;
 
@@ -15,9 +19,15 @@ export function DeleteFilesWithConfirmation(arg1:string,arg2:string,arg3:boolean
 
 export function GetAvailableBackups():Promise<string>;
 
+export function GetBackupBrowserData():Promise<string>;
+
 export function GetBackupManifest():Promise<string>;
 
+export function GetBackupProgress():Promise<string>;
+
 export function GetBackupSession(arg1:string):Promise<string>;
+
+export function GetBackupSessionDetails(arg1:string):Promise<string>;
 
 export function GetBackupSystemStatus():Promise<string>;
 
@@ -49,9 +59,13 @@ export function IsScanning():Promise<boolean>;
 
 export function ListBackupSessions():Promise<string>;
 
+export function PreviewRestoreOperation(arg1:string,arg2:string):Promise<string>;
+
 export function RestoreFiles(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
 export function RestoreFromBackup(arg1:string,arg2:boolean):Promise<string>;
+
+export function RestoreFromBackupWithOptions(arg1:string,arg2:string,arg3:boolean,arg4:boolean):Promise<string>;
 
 export function RestoreSession(arg1:string,arg2:boolean):Promise<string>;
 
@@ -70,18 +84,3 @@ export function StopScan():Promise<void>;
 export function ValidateFilesForDeletion(arg1:string,arg2:string):Promise<string>;
 
 export function VerifyBackupIntegrity(arg1:string):Promise<string>;
-
-// New Backup Management Interface Methods
-export function GetBackupBrowserData():Promise<string>;
-
-export function GetBackupSessionDetails(arg1:string):Promise<string>;
-
-export function PreviewRestoreOperation(arg1:string,arg2:string):Promise<string>;
-
-export function RestoreFromBackupWithOptions(arg1:string,arg2:string,arg3:boolean,arg4:boolean):Promise<string>;
-
-export function DeleteBackupSession(arg1:string):Promise<string>;
-
-export function CleanupBackupsByAge(arg1:number):Promise<string>;
-
-export function GetBackupProgress():Promise<string>;

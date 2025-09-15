@@ -2221,13 +2221,6 @@ function selectAllFiles() {
     document.getElementById('selectAllFiles').checked = true;
 }
 
-// Clear file selection
-function clearFileSelection() {
-    document.querySelectorAll('.file-checkbox').forEach(checkbox => {
-        checkbox.checked = false;
-    });
-    document.getElementById('selectAllFiles').checked = false;
-}
 
 // Toggle all files
 function toggleAllFiles(checked) {

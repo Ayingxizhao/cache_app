@@ -361,7 +361,7 @@ func (bm *BackupManager) saveSessionToManifest(session *BackupSession) error {
 	manifest.TotalFiles += session.TotalFiles
 	manifest.TotalSize += session.TotalSize
 
-	return bm.saveManifest(manifest)
+	return bm.SaveManifest(manifest)
 }
 
 // loadManifest loads the backup manifest from disk
@@ -386,8 +386,8 @@ func (bm *BackupManager) loadManifest() (*BackupManifest, error) {
 	return &manifest, nil
 }
 
-// saveManifest saves the backup manifest to disk
-func (bm *BackupManager) saveManifest(manifest *BackupManifest) error {
+// SaveManifest saves the backup manifest to disk
+func (bm *BackupManager) SaveManifest(manifest *BackupManifest) error {
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest: %w", err)
@@ -511,5 +511,5 @@ func (bm *BackupManager) CleanupOldBackups(olderThan time.Duration) error {
 		manifest.TotalSize += session.TotalSize
 	}
 
-	return bm.saveManifest(manifest)
+	return bm.SaveManifest(manifest)
 }

@@ -10,12 +10,20 @@ export function ClassifyFileSafety(arg1) {
   return window['go']['main']['App']['ClassifyFileSafety'](arg1);
 }
 
+export function CleanupBackupsByAge(arg1) {
+  return window['go']['main']['App']['CleanupBackupsByAge'](arg1);
+}
+
 export function CleanupOldBackups(arg1) {
   return window['go']['main']['App']['CleanupOldBackups'](arg1);
 }
 
 export function ConfirmDeletion(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['ConfirmDeletion'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function DeleteBackupSession(arg1) {
+  return window['go']['main']['App']['DeleteBackupSession'](arg1);
 }
 
 export function DeleteFilesWithBackup(arg1, arg2) {
@@ -30,12 +38,24 @@ export function GetAvailableBackups() {
   return window['go']['main']['App']['GetAvailableBackups']();
 }
 
+export function GetBackupBrowserData() {
+  return window['go']['main']['App']['GetBackupBrowserData']();
+}
+
 export function GetBackupManifest() {
   return window['go']['main']['App']['GetBackupManifest']();
 }
 
+export function GetBackupProgress() {
+  return window['go']['main']['App']['GetBackupProgress']();
+}
+
 export function GetBackupSession(arg1) {
   return window['go']['main']['App']['GetBackupSession'](arg1);
+}
+
+export function GetBackupSessionDetails(arg1) {
+  return window['go']['main']['App']['GetBackupSessionDetails'](arg1);
 }
 
 export function GetBackupSystemStatus() {
@@ -98,12 +118,20 @@ export function ListBackupSessions() {
   return window['go']['main']['App']['ListBackupSessions']();
 }
 
+export function PreviewRestoreOperation(arg1, arg2) {
+  return window['go']['main']['App']['PreviewRestoreOperation'](arg1, arg2);
+}
+
 export function RestoreFiles(arg1, arg2, arg3) {
   return window['go']['main']['App']['RestoreFiles'](arg1, arg2, arg3);
 }
 
 export function RestoreFromBackup(arg1, arg2) {
   return window['go']['main']['App']['RestoreFromBackup'](arg1, arg2);
+}
+
+export function RestoreFromBackupWithOptions(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['RestoreFromBackupWithOptions'](arg1, arg2, arg3, arg4);
 }
 
 export function RestoreSession(arg1, arg2) {
@@ -140,33 +168,4 @@ export function ValidateFilesForDeletion(arg1, arg2) {
 
 export function VerifyBackupIntegrity(arg1) {
   return window['go']['main']['App']['VerifyBackupIntegrity'](arg1);
-}
-
-// New Backup Management Interface Methods
-export function GetBackupBrowserData() {
-  return window['go']['main']['App']['GetBackupBrowserData']();
-}
-
-export function GetBackupSessionDetails(arg1) {
-  return window['go']['main']['App']['GetBackupSessionDetails'](arg1);
-}
-
-export function PreviewRestoreOperation(arg1, arg2) {
-  return window['go']['main']['App']['PreviewRestoreOperation'](arg1, arg2);
-}
-
-export function RestoreFromBackupWithOptions(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['RestoreFromBackupWithOptions'](arg1, arg2, arg3, arg4);
-}
-
-export function DeleteBackupSession(arg1) {
-  return window['go']['main']['App']['DeleteBackupSession'](arg1);
-}
-
-export function CleanupBackupsByAge(arg1) {
-  return window['go']['main']['App']['CleanupBackupsByAge'](arg1);
-}
-
-export function GetBackupProgress() {
-  return window['go']['main']['App']['GetBackupProgress']();
 }
