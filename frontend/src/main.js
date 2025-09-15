@@ -1,6 +1,6 @@
 import './style.css';
 import './app.css';
-import { ScanCacheLocation, ScanMultipleCacheLocations, GetCacheLocationsFromConfig, GetSystemInfo, IsScanning, StopScan, GetScanProgress, GetLastScanResult, GetSafetyClassificationSummary, ClassifyFileSafety, GetSafetyClassificationRules, GetFilesBySafetyLevel } from '../wailsjs/go/main/App.js';
+import { ScanCacheLocation, ScanMultipleCacheLocations, GetCacheLocationsFromConfig, GetSystemInfo, IsScanning, StopScan, GetScanProgress, GetLastScanResult, GetSafetyClassificationSummary, ClassifyFileSafety, GetSafetyClassificationRules, GetFilesBySafetyLevel, DeleteFilesWithConfirmation, ConfirmDeletion, GetDeletionProgress, StopDeletion, RestoreFromBackup, GetDeletionHistory, GetAvailableBackups, ValidateFilesForDeletion, GetDeletionSystemStatus, RevealInFinder, GetBackupBrowserData, GetBackupSessionDetails, PreviewRestoreOperation, RestoreFromBackupWithOptions, DeleteBackupSession, CleanupBackupsByAge, GetBackupProgress } from '../wailsjs/go/main/App.js';
 
 // Global state
 let isScanning = false;
@@ -13,6 +13,33 @@ document.addEventListener('DOMContentLoaded', function() {
     createUI();
     initializeApp();
     setupEventListeners();
+    
+    // Make functions globally available
+    window.selectAllSafeFiles = selectAllSafeFiles;
+    window.clearFileSelection = clearFileSelection;
+    window.showUndoOptions = showUndoOptions;
+    window.showFileDetails = showFileDetails;
+    window.closeFileDetails = closeFileDetails;
+    window.revealInFinder = revealInFinder;
+    window.toggleLocationFiles = toggleLocationFiles;
+    window.deleteSelectedFiles = deleteSelectedFiles;
+    window.confirmDeletion = confirmDeletion;
+    window.closeDeletionConfirmation = closeDeletionConfirmation;
+    window.closeRestoreDialog = closeRestoreDialog;
+    window.restoreFromBackup = restoreFromBackup;
+    
+    // Backup Management Functions
+    window.showBackupManager = showBackupManager;
+    window.closeBackupManager = closeBackupManager;
+    window.refreshBackupData = refreshBackupData;
+    window.showBackupDetails = showBackupDetails;
+    window.closeBackupDetails = closeBackupDetails;
+    window.restoreBackupSession = restoreBackupSession;
+    window.restoreSelectedFiles = restoreSelectedFiles;
+    window.deleteBackupSession = deleteBackupSession;
+    window.cleanupOldBackups = cleanupOldBackups;
+    window.previewRestore = previewRestore;
+    window.closeRestorePreview = closeRestorePreview;
 });
 
 function createUI() {
@@ -29,6 +56,10 @@ function createUI() {
                         </div>
                     </div>
                     <div class="header-actions">
+                        <button id="backupManagerButton" class="btn btn-secondary">
+                            <span class="btn-icon">💾</span>
+                            Backup Manager
+                        </button>
                         <button id="refreshButton" class="btn btn-outline">
                             <span class="btn-icon">🔄</span>
                             Refresh
@@ -179,6 +210,7 @@ function setupEventListeners() {
     const refreshButton = document.getElementById('refreshButton');
     const exportButton = document.getElementById('exportButton');
     const errorClose = document.getElementById('errorClose');
+    const backupManagerButton = document.getElementById('backupManagerButton');
     
     if (scanButton) {
         scanButton.addEventListener('click', scanSingleLocation);
@@ -207,6 +239,47 @@ function setupEventListeners() {
     if (errorClose) {
         errorClose.addEventListener('click', hideError);
     }
+    if (backupManagerButton) {
+        backupManagerButton.addEventListener('click', showBackupManager);
+    }
+    
+    // Add event delegation for dynamically created buttons
+    document.addEventListener('click', function(e) {
+        // Handle file detail buttons
+        if (e.target.classList.contains('btn-icon') && e.target.getAttribute('title') === 'View Details') {
+            const row = e.target.closest('.file-row');
+            if (row) {
+                const filePath = row.dataset.filePath;
+                const fileName = row.querySelector('.file-name-text').textContent;
+                const fileSize = parseInt(row.dataset.fileSize);
+                const fileType = row.dataset.fileType;
+                const modified = row.querySelector('.file-modified').textContent;
+                const accessed = row.querySelector('.file-accessed').textContent;
+                const permissions = row.querySelector('.file-actions').getAttribute('data-permissions') || '';
+                const safetyData = row.querySelector('.file-actions').getAttribute('data-safety') || '';
+                
+                showFileDetails(filePath, fileName, fileSize, modified, accessed, fileType, permissions, safetyData);
+            }
+        }
+        
+        // Handle reveal in finder buttons
+        if (e.target.classList.contains('btn-icon') && e.target.getAttribute('title') === 'Reveal in Finder') {
+            const row = e.target.closest('.file-row');
+            if (row) {
+                const filePath = row.dataset.filePath;
+                revealInFinder(filePath);
+            }
+        }
+        
+        // Handle location toggle buttons
+        if (e.target.classList.contains('toggle-icon') || e.target.closest('.location-header')) {
+            const locationCard = e.target.closest('.location-card');
+            if (locationCard) {
+                const locationId = locationCard.dataset.locationId;
+                toggleLocationFiles(locationId);
+            }
+        }
+    });
 }
 
 function populateLocationsDropdown(locations) {
@@ -469,6 +542,10 @@ function displayScanResult(result) {
                                 <span class="btn-icon">🔲</span>
                                 Clear Selection
                             </button>
+                            <button id="undoButton" class="btn btn-secondary" onclick="showUndoOptions()">
+                                <span class="btn-icon">🔄</span>
+                                Undo/Restore
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -570,6 +647,10 @@ function displayScanResult(result) {
                             <button id="clearSelectionButton" class="btn btn-outline" onclick="clearFileSelection()">
                                 <span class="btn-icon">🔲</span>
                                 Clear Selection
+                            </button>
+                            <button id="undoButton" class="btn btn-secondary" onclick="showUndoOptions()">
+                                <span class="btn-icon">🔄</span>
+                                Undo/Restore
                             </button>
                         </div>
                     </div>
@@ -695,6 +776,7 @@ function createFileRow(file) {
         const safety = file.safety_classification;
         // Ensure safety.level is a string and convert to string if needed
         safetyLevel = String(safety.level || '');
+        console.log(`File ${file.name}: safety level = "${safetyLevel}"`);
         const safetyIcon = getSafetyIcon(safetyLevel);
         const safetyColor = getSafetyColor(safetyLevel);
         safetyDisplay = `
@@ -704,6 +786,8 @@ function createFileRow(file) {
             </div>
         `;
         safetyClass = `safety-${safetyLevel.toLowerCase()}`;
+    } else if (!isDirectory) {
+        console.log(`File ${file.name}: no safety classification`);
     }
     
     return `
@@ -719,11 +803,11 @@ function createFileRow(file) {
             <td class="file-safety">
                 ${safetyDisplay}
             </td>
-            <td class="file-actions">
-                <button class="btn-icon" onclick="showFileDetails('${file.path}', '${file.name}', ${file.size}, '${file.last_modified}', '${file.last_accessed}', '${fileType}', '${file.permissions}', '${file.safety_classification ? JSON.stringify(file.safety_classification).replace(/'/g, "&#39;") : ''}')" title="View Details">
+            <td class="file-actions" data-permissions="${file.permissions}" data-safety="${file.safety_classification ? JSON.stringify(file.safety_classification).replace(/'/g, "&#39;") : ''}">
+                <button class="btn-icon" title="View Details">
                     ℹ️
                 </button>
-                <button class="btn-icon" onclick="revealInFinder('${file.path}')" title="Reveal in Finder">
+                <button class="btn-icon" title="Reveal in Finder">
                     📂
                 </button>
             </td>
@@ -900,6 +984,7 @@ function toggleLocationFiles(locationId) {
 }
 
 function showFileDetails(path, name, size, modified, accessed, type, permissions, safetyData = '') {
+    console.log('showFileDetails called with:', { path, name, size, modified, accessed, type, permissions, safetyData });
     const modal = document.createElement('div');
     modal.className = 'file-details-modal';
     
@@ -997,33 +1082,108 @@ function closeFileDetails() {
     }
 }
 
-function revealInFinder(path) {
-    // This would need to be implemented in the backend
+async function revealInFinder(path) {
     console.log('Reveal in Finder:', path);
-    showError('Reveal in Finder functionality not yet implemented');
+    
+    try {
+        // Call the backend function to open Finder
+        const result = await RevealInFinder(path);
+        const response = JSON.parse(result);
+        
+        if (response.status === 'success') {
+            showSuccessMessage(response.message);
+        } else {
+            showError(`Failed to reveal in Finder: ${response.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Failed to reveal in Finder:', error);
+        showError(`Failed to reveal in Finder: ${error.message}`);
+    }
 }
 
 // Bulk operations for file selection
 function selectAllSafeFiles() {
-    const safeRows = document.querySelectorAll('.file-row[data-safety-level="Safe"]');
-    safeRows.forEach(row => {
-        row.classList.add('selected');
-        // Add checkbox if not exists
-        if (!row.querySelector('.file-checkbox')) {
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'file-checkbox';
-            checkbox.checked = true;
-            checkbox.addEventListener('change', (e) => {
-                row.classList.toggle('selected', e.target.checked);
-            });
-            row.querySelector('.file-name').prepend(checkbox);
-        } else {
-            row.querySelector('.file-checkbox').checked = true;
+    console.log('selectAllSafeFiles called');
+    
+    // Get all file rows
+    const allRows = document.querySelectorAll('.file-row');
+    console.log('Total file rows found:', allRows.length);
+    
+    // Debug: Check what safety levels exist
+    const safetyLevels = new Set();
+    allRows.forEach(row => {
+        const safetyLevel = row.getAttribute('data-safety-level');
+        if (safetyLevel) {
+            safetyLevels.add(safetyLevel);
         }
     });
+    console.log('Safety levels found:', Array.from(safetyLevels));
+    
+    // Look for safe files with more flexible matching
+    const safeRows = document.querySelectorAll('.file-row[data-safety-level="Safe"], .file-row[data-safety-level="safe"]');
+    console.log('Safe rows found:', safeRows.length);
+    
+    if (safeRows.length === 0) {
+        // Try to find any files that might be safe but have different casing or formatting
+        const potentialSafeRows = Array.from(allRows).filter(row => {
+            const safetyLevel = row.getAttribute('data-safety-level');
+            return safetyLevel && safetyLevel.toLowerCase().includes('safe');
+        });
+        console.log('Potential safe rows (case-insensitive):', potentialSafeRows.length);
+        
+        if (potentialSafeRows.length > 0) {
+            potentialSafeRows.forEach(row => {
+                row.classList.add('selected');
+                // Add checkbox if not exists
+                if (!row.querySelector('.file-checkbox')) {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'file-checkbox';
+                    checkbox.checked = true;
+                    checkbox.addEventListener('change', (e) => {
+                        row.classList.toggle('selected', e.target.checked);
+                    });
+                    row.querySelector('.file-name').prepend(checkbox);
+                } else {
+                    row.querySelector('.file-checkbox').checked = true;
+                }
+            });
+        } else {
+            // Check if there are any files at all
+            const allFileRows = document.querySelectorAll('.file-row');
+            if (allFileRows.length === 0) {
+                showError('No files found. Please scan a cache location first.');
+            } else {
+                showError(`No safe files found to select. Found ${allFileRows.length} files total. Make sure files have been classified as safe.`);
+            }
+            return;
+        }
+    } else {
+        safeRows.forEach(row => {
+            row.classList.add('selected');
+            // Add checkbox if not exists
+            if (!row.querySelector('.file-checkbox')) {
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'file-checkbox';
+                checkbox.checked = true;
+                checkbox.addEventListener('change', (e) => {
+                    row.classList.toggle('selected', e.target.checked);
+                });
+                row.querySelector('.file-name').prepend(checkbox);
+            } else {
+                row.querySelector('.file-checkbox').checked = true;
+            }
+        });
+    }
     
     updateSelectionCount();
+    
+    // Show success message
+    const selectedCount = document.querySelectorAll('.file-row.selected').length;
+    if (selectedCount > 0) {
+        showSuccessMessage(`Successfully selected ${selectedCount} safe files`);
+    }
 }
 
 function clearFileSelection() {
@@ -1070,7 +1230,10 @@ function updateSelectionCount() {
     }
 }
 
-function deleteSelectedFiles() {
+// Store selected files globally for confirmation
+let selectedFilesForDeletion = [];
+
+async function deleteSelectedFiles() {
     const selectedFiles = Array.from(document.querySelectorAll('.file-row.selected'));
     if (selectedFiles.length === 0) {
         showError('No files selected for deletion');
@@ -1078,12 +1241,27 @@ function deleteSelectedFiles() {
     }
     
     const filePaths = selectedFiles.map(row => row.dataset.filePath);
-    const confirmMessage = `Are you sure you want to delete ${filePaths.length} selected files?\n\nThis action cannot be undone.`;
+    selectedFilesForDeletion = filePaths; // Store globally
     
-    if (confirm(confirmMessage)) {
-        // TODO: Implement actual file deletion
-        showError('File deletion functionality not yet implemented in the backend');
-        console.log('Files to delete:', filePaths);
+    try {
+        // Show loading state
+        showProgress('Validating files for deletion...', true);
+        
+        // Validate files first
+        const validationResult = await ValidateFilesForDeletion(JSON.stringify(filePaths), 'manual_deletion');
+        const validation = JSON.parse(validationResult);
+        
+        // Create confirmation dialog
+        const dialogResult = await DeleteFilesWithConfirmation(JSON.stringify(filePaths), 'manual_deletion', false, false);
+        const dialog = JSON.parse(dialogResult);
+        
+        // Show confirmation modal
+        showDeletionConfirmationDialog(dialog, validation);
+        
+    } catch (error) {
+        console.error('Deletion error:', error);
+        showError(`Deletion failed: ${error.message}`);
+        showProgress('Deletion failed', false);
     }
 }
 
@@ -1288,5 +1466,1006 @@ function formatDuration(nanoseconds) {
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = seconds % 60;
         return `${minutes}m ${remainingSeconds.toFixed(1)}s`;
+    }
+}
+
+// Deletion confirmation dialog
+function showDeletionConfirmationDialog(dialog, validation) {
+    const modal = document.createElement('div');
+    modal.className = 'deletion-confirmation-modal';
+    
+    const warningsHTML = dialog.warnings && dialog.warnings.length > 0 ? `
+        <div class="warnings-section">
+            <h4>⚠️ Warnings</h4>
+            <ul class="warnings-list">
+                ${dialog.warnings.map(warning => `<li>${warning}</li>`).join('')}
+            </ul>
+        </div>
+    ` : '';
+    
+    const detailsHTML = dialog.details ? `
+        <div class="details-section">
+            <h4>📋 Details</h4>
+            <ul class="details-list">
+                ${dialog.details.map(detail => `<li>${detail}</li>`).join('')}
+            </ul>
+        </div>
+    ` : '';
+    
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeDeletionConfirmation()">
+            <div class="modal-content deletion-modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>${dialog.title}</h3>
+                    <button class="modal-close" onclick="closeDeletionConfirmation()">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="confirmation-message">
+                        <p>${dialog.message}</p>
+                    </div>
+                    ${warningsHTML}
+                    ${detailsHTML}
+                    <div class="safety-info">
+                        <h4>🛡️ Safety Measures</h4>
+                        <ul>
+                            <li>✅ Mandatory backup will be created before deletion</li>
+                            <li>🔄 Files can be restored from backup if needed</li>
+                            <li>🚫 System critical files are protected</li>
+                            <li>📝 All operations are logged with timestamps</li>
+                        </ul>
+                    </div>
+                    <div class="confirmation-options">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="forceDeleteCheckbox">
+                            <span>Force delete (skip safety checks)</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="dryRunCheckbox">
+                            <span>Dry run (preview only, don't actually delete)</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="closeDeletionConfirmation()">Cancel</button>
+                    <button class="btn btn-danger" onclick="confirmDeletion('${JSON.stringify(dialog).replace(/'/g, "&#39;")}')">
+                        <span class="btn-icon">🗑️</span>
+                        Confirm Deletion
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function closeDeletionConfirmation() {
+    const modal = document.querySelector('.deletion-confirmation-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function confirmDeletion(dialogJSON) {
+    try {
+        const forceDelete = document.getElementById('forceDeleteCheckbox').checked;
+        const dryRun = document.getElementById('dryRunCheckbox').checked;
+        
+        // Close confirmation dialog
+        closeDeletionConfirmation();
+        
+        // Show progress
+        showProgress('Starting deletion operation...', true);
+        
+        // Confirm deletion with files
+        const result = await ConfirmDeletion(dialogJSON, JSON.stringify(selectedFilesForDeletion), true, forceDelete, dryRun);
+        const operation = JSON.parse(result);
+        
+        if (operation.status === 'started') {
+            // Start monitoring progress
+            monitorDeletionProgress(operation.operation_id);
+        } else {
+            showError('Failed to start deletion operation');
+            showProgress('Deletion failed', false);
+        }
+        
+    } catch (error) {
+        console.error('Confirmation error:', error);
+        showError(`Deletion confirmation failed: ${error.message}`);
+        showProgress('Deletion failed', false);
+    }
+}
+
+// Monitor deletion progress
+let deletionProgressInterval = null;
+
+function monitorDeletionProgress(operationID) {
+    // Clear any existing interval
+    if (deletionProgressInterval) {
+        clearInterval(deletionProgressInterval);
+    }
+    
+    // Poll progress every 500ms
+    deletionProgressInterval = setInterval(async () => {
+        try {
+            const progressResult = await GetDeletionProgress(operationID);
+            const progress = JSON.parse(progressResult);
+            
+            // Update progress display
+            updateDeletionProgress(progress);
+            
+            // Check if operation is complete
+            if (progress.status === 'completed' || progress.status === 'failed' || progress.status === 'cancelled') {
+                clearInterval(deletionProgressInterval);
+                deletionProgressInterval = null;
+                
+                if (progress.status === 'completed') {
+                    showProgress('Deletion completed successfully!', false);
+                    // Refresh the file list or show success message
+                    showSuccessMessage(`Successfully deleted ${progress.files_processed} files`);
+                } else {
+                    showError(`Deletion ${progress.status}: ${progress.message}`);
+                    showProgress('Deletion failed', false);
+                }
+            }
+            
+        } catch (error) {
+            console.error('Progress monitoring error:', error);
+            clearInterval(deletionProgressInterval);
+            deletionProgressInterval = null;
+            showError('Failed to monitor deletion progress');
+            showProgress('Deletion failed', false);
+        }
+    }, 500);
+}
+
+function updateDeletionProgress(progress) {
+    const progressText = document.getElementById('progressText');
+    const progressBar = document.getElementById('progressBar');
+    
+    if (progressText) {
+        progressText.textContent = progress.message || 'Processing...';
+    }
+    
+    if (progressBar) {
+        progressBar.style.width = `${progress.progress || 0}%`;
+        progressBar.style.animation = 'none'; // Remove pulsing animation
+    }
+    
+    // Update progress details
+    const filesScanned = document.getElementById('filesScanned');
+    const sizeFound = document.getElementById('sizeFound');
+    
+    if (filesScanned) {
+        filesScanned.textContent = `${progress.files_processed || 0} / ${progress.total_files || 0}`;
+    }
+    
+    if (sizeFound) {
+        sizeFound.textContent = formatBytes(progress.current_size || 0);
+    }
+}
+
+function showSuccessMessage(message) {
+    const successContainer = document.createElement('div');
+    successContainer.className = 'success-container';
+    successContainer.innerHTML = `
+        <div class="success-icon">✅</div>
+        <div class="success-content">
+            <h4>Success</h4>
+            <p>${message}</p>
+        </div>
+        <button class="success-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    // Insert after the progress container
+    const progressContainer = document.getElementById('progressContainer');
+    if (progressContainer && progressContainer.parentNode) {
+        progressContainer.parentNode.insertBefore(successContainer, progressContainer.nextSibling);
+    }
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (successContainer.parentNode) {
+            successContainer.remove();
+        }
+    }, 5000);
+}
+
+// Undo functionality
+async function showUndoOptions() {
+    try {
+        const backupsResult = await GetAvailableBackups();
+        const backups = JSON.parse(backupsResult);
+        
+        if (backups.length === 0) {
+            showError('No backup sessions available for restore');
+            return;
+        }
+        
+        showRestoreDialog(backups);
+        
+    } catch (error) {
+        console.error('Error getting backups:', error);
+        showError(`Failed to get backup sessions: ${error.message}`);
+    }
+}
+
+function showRestoreDialog(backups) {
+    const modal = document.createElement('div');
+    modal.className = 'restore-modal';
+    
+    const backupOptions = backups.map(backup => `
+        <div class="backup-option" data-session-id="${backup.session_id}">
+            <div class="backup-info">
+                <h4>${backup.operation}</h4>
+                <p>Session: ${backup.session_id}</p>
+                <p>Files: ${backup.total_files}</p>
+                <p>Size: ${formatBytes(backup.total_size)}</p>
+                <p>Created: ${new Date(backup.created_at).toLocaleString()}</p>
+            </div>
+            <button class="btn btn-primary" onclick="restoreFromBackup('${backup.session_id}')">
+                <span class="btn-icon">🔄</span>
+                Restore
+            </button>
+        </div>
+    `).join('');
+    
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeRestoreDialog()">
+            <div class="modal-content restore-modal-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>🔄 Restore from Backup</h3>
+                    <button class="modal-close" onclick="closeRestoreDialog()">×</button>
+                </div>
+                <div class="modal-body">
+                    <p>Select a backup session to restore files from:</p>
+                    <div class="backup-list">
+                        ${backupOptions}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="closeRestoreDialog()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function closeRestoreDialog() {
+    const modal = document.querySelector('.restore-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+async function restoreFromBackup(sessionID) {
+    try {
+        closeRestoreDialog();
+        
+        showProgress('Starting restore operation...', true);
+        
+        const result = await RestoreFromBackup(sessionID, false);
+        const restore = JSON.parse(result);
+        
+        showProgress('Restore completed successfully!', false);
+        showSuccessMessage(`Successfully restored ${restore.success_count} files from backup`);
+        
+    } catch (error) {
+        console.error('Restore error:', error);
+        showError(`Restore failed: ${error.message}`);
+        showProgress('Restore failed', false);
+    }
+}
+
+// ============================================================================
+// BACKUP MANAGEMENT INTERFACE
+// ============================================================================
+
+// Global state for backup management
+let backupData = null;
+let currentBackupSession = null;
+
+// Show the backup manager interface
+async function showBackupManager() {
+    try {
+        showProgress('Loading backup data...', true);
+        
+        const result = await GetBackupBrowserData();
+        const data = JSON.parse(result);
+        backupData = data;
+        
+        showProgress('Backup data loaded', false);
+        displayBackupManager(data);
+        
+    } catch (error) {
+        console.error('Error loading backup data:', error);
+        showError(`Failed to load backup data: ${error.message}`);
+        showProgress('Failed to load backup data', false);
+    }
+}
+
+// Display the backup manager interface
+function displayBackupManager(data) {
+    const modal = document.createElement('div');
+    modal.className = 'backup-manager-modal';
+    
+    const summary = data.summary;
+    const sessions = data.sessions || [];
+    
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeBackupManager()">
+            <div class="modal-content backup-manager-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>💾 Backup Manager</h3>
+                    <div class="header-actions">
+                        <button class="btn btn-outline btn-sm" onclick="refreshBackupData()">
+                            <span class="btn-icon">🔄</span>
+                            Refresh
+                        </button>
+                        <button class="modal-close" onclick="closeBackupManager()">×</button>
+                    </div>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="backup-summary">
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <div class="summary-icon">📦</div>
+                                <div class="summary-content">
+                                    <h4>${summary.total_sessions}</h4>
+                                    <p>Backup Sessions</p>
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">📁</div>
+                                <div class="summary-content">
+                                    <h4>${summary.total_files.toLocaleString()}</h4>
+                                    <p>Total Files</p>
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">💾</div>
+                                <div class="summary-content">
+                                    <h4>${formatBytes(summary.total_size)}</h4>
+                                    <p>Total Size</p>
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">🗓️</div>
+                                <div class="summary-content">
+                                    <h4>${summary.oldest_session ? new Date(summary.oldest_session).toLocaleDateString() : 'N/A'}</h4>
+                                    <p>Oldest Backup</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="backup-controls">
+                        <div class="search-controls">
+                            <div class="search-box">
+                                <input type="text" id="backupSearch" placeholder="Search backups..." class="search-input">
+                                <span class="search-icon">🔍</span>
+                            </div>
+                            <select id="backupFilter" class="filter-select">
+                                <option value="">All Operations</option>
+                                <option value="manual_deletion">Manual Deletion</option>
+                                <option value="cache_cleanup">Cache Cleanup</option>
+                                <option value="system_cleanup">System Cleanup</option>
+                            </select>
+                        </div>
+                        <div class="bulk-actions">
+                            <button class="btn btn-outline btn-sm" onclick="cleanupOldBackups()">
+                                <span class="btn-icon">🧹</span>
+                                Cleanup Old Backups
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="backup-sessions">
+                        <h4>Backup Sessions</h4>
+                        ${sessions.length === 0 ? 
+                            '<div class="empty-state"><div class="empty-icon">📦</div><h3>No Backups Found</h3><p>No backup sessions are available.</p></div>' :
+                            `<div class="sessions-list">
+                                ${sessions.map(session => createBackupSessionCard(session)).join('')}
+                            </div>`
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Setup search and filter
+    setupBackupControls();
+}
+
+// Create a backup session card
+function createBackupSessionCard(session) {
+    const startTime = new Date(session.start_time);
+    const endTime = new Date(session.end_time);
+    const duration = endTime - startTime;
+    
+    return `
+        <div class="backup-session-card" data-session-id="${session.session_id}">
+            <div class="session-header">
+                <div class="session-info">
+                    <h5>${session.operation}</h5>
+                    <p class="session-id">Session: ${session.session_id}</p>
+                    <p class="session-time">${startTime.toLocaleString()}</p>
+                </div>
+                <div class="session-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Files:</span>
+                        <span class="stat-value">${session.total_files}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Size:</span>
+                        <span class="stat-value">${formatBytes(session.total_size)}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Duration:</span>
+                        <span class="stat-value">${formatDuration(duration)}</span>
+                    </div>
+                </div>
+                <div class="session-status">
+                    <span class="status-badge status-${session.status}">${session.status}</span>
+                </div>
+            </div>
+            
+            <div class="session-actions">
+                <button class="btn btn-outline btn-sm" onclick="showBackupDetails('${session.session_id}')">
+                    <span class="btn-icon">ℹ️</span>
+                    Details
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="previewRestore('${session.session_id}')">
+                    <span class="btn-icon">👁️</span>
+                    Preview Restore
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="restoreBackupSession('${session.session_id}')">
+                    <span class="btn-icon">🔄</span>
+                    Restore All
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteBackupSession('${session.session_id}')">
+                    <span class="btn-icon">🗑️</span>
+                    Delete
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+// Setup backup controls (search and filter)
+function setupBackupControls() {
+    const searchInput = document.getElementById('backupSearch');
+    const filterSelect = document.getElementById('backupFilter');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', filterBackupSessions);
+    }
+    
+    if (filterSelect) {
+        filterSelect.addEventListener('change', filterBackupSessions);
+    }
+}
+
+// Filter backup sessions
+function filterBackupSessions() {
+    const searchTerm = document.getElementById('backupSearch')?.value.toLowerCase() || '';
+    const filterValue = document.getElementById('backupFilter')?.value || '';
+    
+    document.querySelectorAll('.backup-session-card').forEach(card => {
+        const sessionId = card.dataset.sessionId;
+        const session = backupData.sessions.find(s => s.session_id === sessionId);
+        
+        if (!session) return;
+        
+        let show = true;
+        
+        // Search filter
+        if (searchTerm) {
+            const searchableText = `${session.operation} ${session.session_id}`.toLowerCase();
+            if (!searchableText.includes(searchTerm)) {
+                show = false;
+            }
+        }
+        
+        // Filter by operation
+        if (filterValue && session.operation !== filterValue) {
+            show = false;
+        }
+        
+        card.style.display = show ? '' : 'none';
+    });
+}
+
+// Close backup manager
+function closeBackupManager() {
+    const modal = document.querySelector('.backup-manager-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Refresh backup data
+async function refreshBackupData() {
+    try {
+        showProgress('Refreshing backup data...', true);
+        
+        const result = await GetBackupBrowserData();
+        const data = JSON.parse(result);
+        backupData = data;
+        
+        // Update the display
+        const sessionsList = document.querySelector('.sessions-list');
+        if (sessionsList) {
+            sessionsList.innerHTML = data.sessions.map(session => createBackupSessionCard(session)).join('');
+        }
+        
+        // Update summary
+        const summary = data.summary;
+        document.querySelector('.summary-item:nth-child(1) h4').textContent = summary.total_sessions;
+        document.querySelector('.summary-item:nth-child(2) h4').textContent = summary.total_files.toLocaleString();
+        document.querySelector('.summary-item:nth-child(3) h4').textContent = formatBytes(summary.total_size);
+        document.querySelector('.summary-item:nth-child(4) h4').textContent = summary.oldest_session ? new Date(summary.oldest_session).toLocaleDateString() : 'N/A';
+        
+        showProgress('Backup data refreshed', false);
+        
+    } catch (error) {
+        console.error('Error refreshing backup data:', error);
+        showError(`Failed to refresh backup data: ${error.message}`);
+        showProgress('Failed to refresh backup data', false);
+    }
+}
+
+// Show backup session details
+async function showBackupDetails(sessionID) {
+    try {
+        showProgress('Loading session details...', true);
+        
+        const result = await GetBackupSessionDetails(sessionID);
+        const details = JSON.parse(result);
+        currentBackupSession = details;
+        
+        showProgress('Session details loaded', false);
+        displayBackupDetails(details);
+        
+    } catch (error) {
+        console.error('Error loading session details:', error);
+        showError(`Failed to load session details: ${error.message}`);
+        showProgress('Failed to load session details', false);
+    }
+}
+
+// Display backup session details
+function displayBackupDetails(details) {
+    const session = details.session;
+    const modal = document.createElement('div');
+    modal.className = 'backup-details-modal';
+    
+    const integrityStatus = details.integrity_valid ? 
+        '<span class="status-badge status-completed">✅ Valid</span>' : 
+        '<span class="status-badge status-failed">❌ Invalid</span>';
+    
+    const integrityErrors = details.integrity_errors.length > 0 ? 
+        `<div class="integrity-errors">
+            <h5>Integrity Errors:</h5>
+            <ul>${details.integrity_errors.map(error => `<li>${error}</li>`).join('')}</ul>
+        </div>` : '';
+    
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeBackupDetails()">
+            <div class="modal-content backup-details-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>📋 Backup Session Details</h3>
+                    <button class="modal-close" onclick="closeBackupDetails()">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="session-overview">
+                        <div class="overview-grid">
+                            <div class="overview-item">
+                                <span class="overview-label">Session ID:</span>
+                                <span class="overview-value">${session.session_id}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Operation:</span>
+                                <span class="overview-value">${session.operation}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Status:</span>
+                                <span class="overview-value"><span class="status-badge status-${session.status}">${session.status}</span></span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Start Time:</span>
+                                <span class="overview-value">${new Date(session.start_time).toLocaleString()}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">End Time:</span>
+                                <span class="overview-value">${new Date(session.end_time).toLocaleString()}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Duration:</span>
+                                <span class="overview-value">${formatDuration(new Date(session.end_time) - new Date(session.start_time))}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Total Files:</span>
+                                <span class="overview-value">${session.total_files}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Success Count:</span>
+                                <span class="overview-value">${session.success_count}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Failure Count:</span>
+                                <span class="overview-value">${session.failure_count}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Total Size:</span>
+                                <span class="overview-value">${formatBytes(session.total_size)}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Backup Size:</span>
+                                <span class="overview-value">${formatBytes(session.backup_size)}</span>
+                            </div>
+                            <div class="overview-item">
+                                <span class="overview-label">Integrity:</span>
+                                <span class="overview-value">${integrityStatus}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${integrityErrors}
+                    
+                    <div class="backup-files">
+                        <h4>Backed Up Files (${session.entries.length})</h4>
+                        <div class="files-controls">
+                            <div class="search-box">
+                                <input type="text" id="fileSearchDetails" placeholder="Search files..." class="search-input">
+                                <span class="search-icon">🔍</span>
+                            </div>
+                            <div class="file-actions">
+                                <button class="btn btn-outline btn-sm" onclick="selectAllFiles()">
+                                    <span class="btn-icon">☑️</span>
+                                    Select All
+                                </button>
+                                <button class="btn btn-outline btn-sm" onclick="clearFileSelection()">
+                                    <span class="btn-icon">☐</span>
+                                    Clear Selection
+                                </button>
+                                <button class="btn btn-primary btn-sm" onclick="restoreSelectedFiles('${session.session_id}')">
+                                    <span class="btn-icon">🔄</span>
+                                    Restore Selected
+                                </button>
+                            </div>
+                        </div>
+                        <div class="files-list">
+                            ${createBackupFilesList(session.entries)}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="closeBackupDetails()">Close</button>
+                    <button class="btn btn-secondary" onclick="restoreBackupSession('${session.session_id}')">
+                        <span class="btn-icon">🔄</span>
+                        Restore All Files
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Setup file search
+    const fileSearch = document.getElementById('fileSearchDetails');
+    if (fileSearch) {
+        fileSearch.addEventListener('input', filterBackupFiles);
+    }
+}
+
+// Create backup files list
+function createBackupFilesList(entries) {
+    return `
+        <table class="backup-files-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAllFiles" onchange="toggleAllFiles(this.checked)"></th>
+                    <th>Original Path</th>
+                    <th>Size</th>
+                    <th>Backup Time</th>
+                    <th>Status</th>
+                    <th>Checksum</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${entries.map(entry => `
+                    <tr class="backup-file-row" data-file-path="${entry.original_path}">
+                        <td><input type="checkbox" class="file-checkbox" value="${entry.original_path}"></td>
+                        <td class="file-path" title="${entry.original_path}">${entry.original_path}</td>
+                        <td class="file-size">${formatBytes(entry.size)}</td>
+                        <td class="file-time">${new Date(entry.backup_time).toLocaleString()}</td>
+                        <td class="file-status">
+                            <span class="status-badge status-${entry.success ? 'completed' : 'failed'}">
+                                ${entry.success ? '✅ Success' : '❌ Failed'}
+                            </span>
+                        </td>
+                        <td class="file-checksum" title="${entry.checksum}">${entry.checksum.substring(0, 16)}...</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Filter backup files
+function filterBackupFiles() {
+    const searchTerm = document.getElementById('fileSearchDetails')?.value.toLowerCase() || '';
+    
+    document.querySelectorAll('.backup-file-row').forEach(row => {
+        const filePath = row.dataset.filePath.toLowerCase();
+        const show = !searchTerm || filePath.includes(searchTerm);
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+// Select all files
+function selectAllFiles() {
+    document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    document.getElementById('selectAllFiles').checked = true;
+}
+
+// Clear file selection
+function clearFileSelection() {
+    document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('selectAllFiles').checked = false;
+}
+
+// Toggle all files
+function toggleAllFiles(checked) {
+    document.querySelectorAll('.file-checkbox').forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+}
+
+// Close backup details
+function closeBackupDetails() {
+    const modal = document.querySelector('.backup-details-modal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// Restore entire backup session
+async function restoreBackupSession(sessionID) {
+    try {
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to restore all files from backup session ${sessionID}? This will overwrite existing files.`);
+        if (!confirmed) return;
+        
+        showProgress('Starting restore operation...', true);
+        
+        const result = await RestoreFromBackupWithOptions(sessionID, '', true, false);
+        const restore = JSON.parse(result);
+        
+        showProgress('Restore completed successfully!', false);
+        showSuccessMessage(`Successfully restored ${restore.success_count} files from backup`);
+        
+    } catch (error) {
+        console.error('Restore error:', error);
+        showError(`Restore failed: ${error.message}`);
+        showProgress('Restore failed', false);
+    }
+}
+
+// Restore selected files
+async function restoreSelectedFiles(sessionID) {
+    const selectedFiles = Array.from(document.querySelectorAll('.file-checkbox:checked')).map(cb => cb.value);
+    
+    if (selectedFiles.length === 0) {
+        showError('No files selected for restore');
+        return;
+    }
+    
+    try {
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to restore ${selectedFiles.length} selected files? This will overwrite existing files.`);
+        if (!confirmed) return;
+        
+        showProgress('Starting selective restore operation...', true);
+        
+        const result = await RestoreFromBackupWithOptions(sessionID, JSON.stringify(selectedFiles), true, false);
+        const restore = JSON.parse(result);
+        
+        showProgress('Selective restore completed successfully!', false);
+        showSuccessMessage(`Successfully restored ${restore.success_count} files from backup`);
+        
+    } catch (error) {
+        console.error('Selective restore error:', error);
+        showError(`Selective restore failed: ${error.message}`);
+        showProgress('Selective restore failed', false);
+    }
+}
+
+// Delete backup session
+async function deleteBackupSession(sessionID) {
+    try {
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to delete backup session ${sessionID}? This action cannot be undone.`);
+        if (!confirmed) return;
+        
+        showProgress('Deleting backup session...', true);
+        
+        const result = await DeleteBackupSession(sessionID);
+        const deletion = JSON.parse(result);
+        
+        showProgress('Backup session deleted successfully!', false);
+        showSuccessMessage(`Successfully deleted backup session ${sessionID}`);
+        
+        // Refresh the backup data
+        await refreshBackupData();
+        
+    } catch (error) {
+        console.error('Delete error:', error);
+        showError(`Delete failed: ${error.message}`);
+        showProgress('Delete failed', false);
+    }
+}
+
+// Cleanup old backups
+async function cleanupOldBackups() {
+    try {
+        const days = prompt('Enter the number of days (backups older than this will be deleted):', '30');
+        if (!days || isNaN(days)) return;
+        
+        const daysNum = parseInt(days);
+        if (daysNum <= 0) {
+            showError('Please enter a valid number of days');
+            return;
+        }
+        
+        // Show confirmation dialog
+        const confirmed = confirm(`Are you sure you want to delete all backup sessions older than ${daysNum} days? This action cannot be undone.`);
+        if (!confirmed) return;
+        
+        showProgress('Cleaning up old backups...', true);
+        
+        const result = await CleanupBackupsByAge(daysNum);
+        const cleanup = JSON.parse(result);
+        
+        showProgress('Cleanup completed successfully!', false);
+        showSuccessMessage(`Successfully deleted ${cleanup.deleted_count} old backup sessions`);
+        
+        // Refresh the backup data
+        await refreshBackupData();
+        
+    } catch (error) {
+        console.error('Cleanup error:', error);
+        showError(`Cleanup failed: ${error.message}`);
+        showProgress('Cleanup failed', false);
+    }
+}
+
+// Preview restore operation
+async function previewRestore(sessionID) {
+    try {
+        showProgress('Generating restore preview...', true);
+        
+        const result = await PreviewRestoreOperation(sessionID, '');
+        const preview = JSON.parse(result);
+        
+        showProgress('Restore preview generated', false);
+        displayRestorePreview(sessionID, preview);
+        
+    } catch (error) {
+        console.error('Preview error:', error);
+        showError(`Preview failed: ${error.message}`);
+        showProgress('Preview failed', false);
+    }
+}
+
+// Display restore preview
+function displayRestorePreview(sessionID, preview) {
+    const modal = document.createElement('div');
+    modal.className = 'restore-preview-modal';
+    
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="closeRestorePreview()">
+            <div class="modal-content restore-preview-content" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h3>👁️ Restore Preview</h3>
+                    <button class="modal-close" onclick="closeRestorePreview()">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="preview-summary">
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <div class="summary-icon">📁</div>
+                                <div class="summary-content">
+                                    <h4>${preview.total_files}</h4>
+                                    <p>Total Files</p>
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">✅</div>
+                                <div class="summary-content">
+                                    <h4>${preview.success_count}</h4>
+                                    <p>Can Restore</p>
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">❌</div>
+                                <div class="summary-content">
+                                    <h4>${preview.failure_count}</h4>
+                                    <p>Would Conflict</p>
+                                </div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-icon">💾</div>
+                                <div class="summary-content">
+                                    <h4>${formatBytes(preview.restored_size)}</h4>
+                                    <p>Size to Restore</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-details">
+                        <div class="restoreable-files">
+                            <h4>Files That Can Be Restored (${preview.restored_files.length})</h4>
+                            <div class="files-list">
+                                ${preview.restored_files.map(file => `
+                                    <div class="file-item">
+                                        <span class="file-icon">✅</span>
+                                        <span class="file-path">${file}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        ${preview.failed_files.length > 0 ? `
+                            <div class="conflicting-files">
+                                <h4>Files That Would Conflict (${preview.failed_files.length})</h4>
+                                <div class="files-list">
+                                    ${preview.failed_files.map(file => `
+                                        <div class="file-item">
+                                            <span class="file-icon">⚠️</span>
+                                            <span class="file-path">${file}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="closeRestorePreview()">Close</button>
+                    <button class="btn btn-primary" onclick="restoreBackupSession('${sessionID}')">
+                        <span class="btn-icon">🔄</span>
+                        Proceed with Restore
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Close restore preview
+function closeRestorePreview() {
+    const modal = document.querySelector('.restore-preview-modal');
+    if (modal) {
+        modal.remove();
     }
 }
