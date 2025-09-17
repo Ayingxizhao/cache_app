@@ -536,16 +536,18 @@ class ProductionNavigation {
         const PAGE_SIZE = 200;
         let shown = PAGE_SIZE;
         const renderPage = () => {
-            let html = `<table class="file-table"><thead><tr><th><input type="checkbox" id="selectAllFiles"></th><th>Name</th><th>Size</th><th>Modified</th><th>Safety</th></tr></thead><tbody>`;
+            let html = `<table class="file-table"><thead><tr><th><input type="checkbox" id="selectAllFiles"></th><th>Name</th><th>Size</th><th>Modified</th><th>Safety</th><th>Safety %</th></tr></thead><tbody>`;
             files.slice(0, shown).forEach((file, i) => {
                 const safe = file.safety_classification?.level || (file.is_dir ? 'Directory' : 'Unknown');
                 const safeClass = safe === 'Safe' ? 'safe' : (safe === 'Caution' ? 'caution' : (safe === 'Risky' ? 'risky' : 'unknown'));
+                const confidence = (file.safety_classification && typeof file.safety_classification.confidence === 'number') ? `${file.safety_classification.confidence}%` : '—';
                 html += `<tr>
                     <td><input type="checkbox" class="file-checkbox" data-file-index="${i}"></td>
                     <td>${ProductionNavigation.escapeHtml(file.name)}</td>
                     <td>${ProductionNavigation.formatBytes(file.size || 0)}</td>
                     <td>${file.last_modified ? new Date(file.last_modified).toLocaleDateString() : ''}</td>
                     <td><span class="safety-label ${safeClass}">${safe}</span></td>
+                    <td>${confidence}</td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -649,7 +651,7 @@ class ProductionNavigation {
         if (input === null || input === undefined) return '';
         return String(input)
             .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
+            .replace(/<//g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
