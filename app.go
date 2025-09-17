@@ -196,13 +196,15 @@ func (a *App) IsScanning() bool {
 
 // GetCacheLocationsFromConfig loads cache locations from the JSON config file
 func (a *App) GetCacheLocationsFromConfig() (string, error) {
-	configPath := filepath.Join(".", "cache_locations.json")
+	configPath := filepath.Join(".", "cache_locations_simple.json")
+	log.Printf("Loading cache locations from: %s", configPath)
 	
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		log.Printf("Error reading config file: %v", err)
 		return "", fmt.Errorf("failed to read config file: %w", err)
 	}
+	log.Printf("Successfully read config file, size: %d bytes", len(data))
 	
 	// Parse the JSON to extract scanable locations
 	var config struct {
@@ -267,6 +269,13 @@ func (a *App) GetCacheLocationsFromConfig() (string, error) {
 	if err != nil {
 		log.Printf("Error marshaling locations: %v", err)
 		return "", fmt.Errorf("failed to marshal locations: %w", err)
+	}
+	
+	log.Printf("Returning %d locations to frontend", len(allLocations))
+	if len(allLocations) > 0 {
+		log.Printf("Sample location: %+v", allLocations[0])
+	} else {
+		log.Printf("No locations found")
 	}
 	
 	return string(result), nil

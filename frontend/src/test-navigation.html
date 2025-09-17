@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation Test - Cache App</title>
+    <link rel="stylesheet" href="./src/app.css">
+    <link rel="stylesheet" href="./src/styles/navigation-enhanced.css">
+</head>
+<body>
+    <div id="app">
+        <div class="loading">Loading navigation system...</div>
+    </div>
+    
+    <script type="module">
+        console.log('Starting navigation test...');
+        
+        try {
+            // Import the services
+            console.log('Importing services...');
+            
+            // Test if we can import the modules
+            import('./src/services/router.js').then(routerModule => {
+                console.log('✓ Router module loaded');
+                
+                import('./src/state/AppState.js').then(appStateModule => {
+                    console.log('✓ AppState module loaded');
+                    
+                    import('./src/components/Navigation.js').then(navModule => {
+                        console.log('✓ Navigation module loaded');
+                        
+                        // Test basic functionality
+                        const appState = new appStateModule.AppState();
+                        const router = new routerModule.Router();
+                        const navigation = new navModule.Navigation(router, appState);
+                        
+                        console.log('✓ Components instantiated successfully');
+                        
+                        // Create a simple UI
+                        document.querySelector('#app').innerHTML = `
+                            <div class="app-container">
+                                <div class="test-header">
+                                    <h1>Navigation System Test</h1>
+                                    <p>If you can see this, the navigation system is working!</p>
+                                </div>
+                                <div class="test-content">
+                                    <div class="nav-test">
+                                        <h2>Navigation Component</h2>
+                                        ${navigation.createNavigationHTML()}
+                                    </div>
+                                    <div class="main-test">
+                                        <h2>Main Content</h2>
+                                        ${navigation.createMainContentHTML()}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Initialize navigation
+                        navigation.initialize();
+                        console.log('✓ Navigation initialized');
+                        
+                    }).catch(error => {
+                        console.error('Failed to load Navigation module:', error);
+                        document.querySelector('#app').innerHTML = '<div class="error">Failed to load Navigation module: ' + error.message + '</div>';
+                    });
+                    
+                }).catch(error => {
+                    console.error('Failed to load AppState module:', error);
+                    document.querySelector('#app').innerHTML = '<div class="error">Failed to load AppState module: ' + error.message + '</div>';
+                });
+                
+            }).catch(error => {
+                console.error('Failed to load Router module:', error);
+                document.querySelector('#app').innerHTML = '<div class="error">Failed to load Router module: ' + error.message + '</div>';
+            });
+            
+        } catch (error) {
+            console.error('Test failed:', error);
+            document.querySelector('#app').innerHTML = '<div class="error">Test failed: ' + error.message + '</div>';
+        }
+    </script>
+    
+    <style>
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            font-size: 1.2rem;
+            color: var(--text-primary);
+        }
+        
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: var(--error-color);
+            background: var(--secondary-bg);
+            border: 1px solid var(--error-color);
+            border-radius: var(--radius-md);
+            margin: 2rem;
+        }
+        
+        .test-header {
+            text-align: center;
+            padding: 2rem;
+            background: var(--secondary-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .test-content {
+            display: flex;
+            gap: 2rem;
+            padding: 2rem;
+        }
+        
+        .nav-test, .main-test {
+            flex: 1;
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+        }
+        
+        .nav-test h2, .main-test h2 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+    </style>
+</body>
+</html>

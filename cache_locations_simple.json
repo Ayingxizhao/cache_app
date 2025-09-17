@@ -1,0 +1,132 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "description": "Simplified macOS Cache Locations - User Accessible Only",
+    "last_updated": "2025-01-17",
+    "author": "Cache App Development Team"
+  },
+  "user_caches": [
+    {
+      "id": "user_library_caches",
+      "name": "User Library Caches",
+      "path": "~/Library/Caches/",
+      "description": "User-specific cache files",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - user application caches",
+      "file_patterns": ["*.cache", "*.tmp", "*.log"],
+      "size_estimate": "100MB-2GB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "user_temp",
+      "name": "User Temporary Files",
+      "path": "~/tmp/",
+      "description": "User temporary files",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - temporary user files",
+      "file_patterns": ["*"],
+      "size_estimate": "10MB-100MB",
+      "cleanup_risk": "low"
+    }
+  ],
+  "application_caches": [
+    {
+      "id": "chrome_cache",
+      "name": "Chrome Cache",
+      "path": "~/Library/Caches/Google/Chrome/",
+      "description": "Google Chrome browser cache",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - browser cache",
+      "file_patterns": ["*"],
+      "size_estimate": "500MB-5GB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "firefox_cache",
+      "name": "Firefox Cache",
+      "path": "~/Library/Caches/Firefox/",
+      "description": "Mozilla Firefox browser cache",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - browser cache",
+      "file_patterns": ["*"],
+      "size_estimate": "200MB-2GB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "safari_cache",
+      "name": "Safari Cache",
+      "path": "~/Library/Caches/com.apple.Safari/",
+      "description": "Safari browser cache",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - browser cache",
+      "file_patterns": ["*"],
+      "size_estimate": "100MB-1GB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "vscode_cache",
+      "name": "VS Code Cache",
+      "path": "~/Library/Caches/com.microsoft.VSCode/",
+      "description": "Visual Studio Code cache",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - editor cache",
+      "file_patterns": ["*"],
+      "size_estimate": "50MB-500MB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "node_modules",
+      "name": "Node.js Modules",
+      "path": "~/node_modules/",
+      "description": "Node.js package cache",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - can be reinstalled",
+      "file_patterns": ["*"],
+      "size_estimate": "100MB-10GB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "npm_cache",
+      "name": "npm Cache",
+      "path": "~/.npm/",
+      "description": "npm package cache",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - can be reinstalled",
+      "file_patterns": ["*"],
+      "size_estimate": "100MB-1GB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "yarn_cache",
+      "name": "Yarn Cache",
+      "path": "~/Library/Caches/Yarn/",
+      "description": "Yarn package cache",
+      "permissions": "User accessible",
+      "safety_level": "safe",
+      "recommendation": "Safe to clean - can be reinstalled",
+      "file_patterns": ["*"],
+      "size_estimate": "100MB-1GB",
+      "cleanup_risk": "low"
+    },
+    {
+      "id": "docker_cache",
+      "name": "Docker Cache",
+      "path": "~/Library/Containers/com.docker.docker/Data/vms/0/data/",
+      "description": "Docker container cache",
+      "permissions": "User accessible",
+      "safety_level": "caution",
+      "recommendation": "Proceed with caution - may affect Docker performance",
+      "file_patterns": ["*"],
+      "size_estimate": "1GB-50GB",
+      "cleanup_risk": "medium"
+    }
+  ]
+}

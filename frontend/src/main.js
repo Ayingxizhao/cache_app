@@ -184,9 +184,16 @@ function createUI() {
 
 async function initializeApp() {
     try {
+        console.log('Initializing app...');
+        
         // Load cache locations from config
+        console.log('Loading cache locations...');
         const locations = await GetCacheLocationsFromConfig();
+        console.log('Raw locations data:', locations);
+        
         const locationsData = JSON.parse(locations);
+        console.log('Parsed locations data:', locationsData);
+        console.log('Number of locations:', locationsData.length);
         
         // Populate the locations dropdown
         populateLocationsDropdown(locationsData);
@@ -195,6 +202,8 @@ async function initializeApp() {
         const systemInfo = await GetSystemInfo();
         const systemData = JSON.parse(systemInfo);
         updateSystemInfo(systemData);
+        
+        console.log('App initialization complete');
         
     } catch (error) {
         console.error('Error initializing app:', error);
@@ -283,7 +292,13 @@ function setupEventListeners() {
 }
 
 function populateLocationsDropdown(locations) {
+    console.log('Populating locations dropdown with:', locations);
+    
     const dropdown = document.getElementById('locationSelect');
+    if (!dropdown) {
+        console.error('Location dropdown element not found!');
+        return;
+    }
     
     // Clear existing options
     dropdown.innerHTML = '';
@@ -295,12 +310,22 @@ function populateLocationsDropdown(locations) {
     dropdown.appendChild(defaultOption);
     
     // Add location options
-    locations.forEach(location => {
-        const option = document.createElement('option');
-        option.value = JSON.stringify(location);
-        option.textContent = `${location.name} (${location.type})`;
-        dropdown.appendChild(option);
-    });
+    if (locations && locations.length > 0) {
+        locations.forEach((location, index) => {
+            console.log(`Adding location ${index}:`, location);
+            const option = document.createElement('option');
+            option.value = JSON.stringify(location);
+            option.textContent = `${location.name} (${location.type})`;
+            dropdown.appendChild(option);
+        });
+        console.log(`Added ${locations.length} locations to dropdown`);
+    } else {
+        console.warn('No locations provided to populate dropdown');
+        const noLocationsOption = document.createElement('option');
+        noLocationsOption.value = '';
+        noLocationsOption.textContent = 'No cache locations available';
+        dropdown.appendChild(noLocationsOption);
+    }
 }
 
 function updateSystemInfo(systemInfo) {
@@ -437,8 +462,14 @@ function calculateSafetySummary(files) {
 }
 
 function displayScanResult(result) {
+    console.log('displayScanResult called with:', result);
     const resultsDiv = document.getElementById('scanResults');
     const exportButton = document.getElementById('exportButton');
+    
+    if (!resultsDiv) {
+        console.error('scanResults div not found!');
+        return;
+    }
     
     if (result.locations) {
         // Calculate overall safety summary
@@ -1396,23 +1427,47 @@ function startProgressPolling() {
         try {
             // Check if still scanning
             const scanning = await IsScanning();
-            if (!scanning) {
-                // Scan completed, get the result
+            
+            // Check for timeout (scan should not take more than 5 minutes)
+            const elapsedTime = scanStartTime ? Date.now() - scanStartTime : 0;
+            if (elapsedTime > 300000) { // 5 minutes timeout
                 clearInterval(progressInterval);
                 progressInterval = null;
+                setScanningState(false);
+                showError('Scan timed out after 5 minutes. Please try again.');
+                return;
+            }
+            
+            // Always try to get the result, even if scanning is false
+            // This handles race conditions where scanning completes but state isn't updated yet
+            try {
+                const result = await GetLastScanResult();
+                console.log('Raw result from GetLastScanResult:', result);
+                const scanResult = JSON.parse(result);
+                console.log('Parsed scan result:', scanResult);
                 
-                try {
-                    const result = await GetLastScanResult();
-                    const scanResult = JSON.parse(result);
+                // Check if we have a valid result (not just "no_result" status)
+                if (scanResult && scanResult.status !== 'no_result' && scanResult.id) {
+                    // We have a valid scan result, display it
+                    console.log('Got valid scan result:', scanResult);
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                    
                     displayScanResult(scanResult);
                     currentScanResult = scanResult;
-                } catch (error) {
-                    showError('Failed to get scan result: ' + error.message);
+                    setScanningState(false);
+                    showProgress('Scan completed!', false);
+                    return;
+                } else {
+                    console.log('No valid result yet, status:', scanResult?.status, 'id:', scanResult?.id);
                 }
-                
-                setScanningState(false);
-                showProgress('Scan completed!', false);
-                return;
+            } catch (error) {
+                console.log('No result available yet:', error.message);
+            }
+            
+            if (!scanning) {
+                // Scan completed but no result yet, wait a bit more
+                console.log('Scanning stopped but no result yet, continuing to poll...');
             }
             
             // Update progress

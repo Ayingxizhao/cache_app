@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache App Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; }
+        button { padding: 10px 20px; margin: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Cache App Frontend Test</h1>
+    
+    <div class="test-section">
+        <h2>Test displayScanResult Function</h2>
+        <button onclick="testDisplayScanResult()">Test Display Scan Result</button>
+        <div id="testResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Safety Summary Calculation</h2>
+        <button onclick="testSafetySummary()">Test Safety Summary</button>
+        <div id="safetyResult" class="result"></div>
+    </div>
+
+    <script>
+        // Mock the displayScanResult function
+        function displayScanResult(result) {
+            console.log('displayScanResult called with:', result);
+            const resultsDiv = document.getElementById('testResult');
+            
+            if (!resultsDiv) {
+                console.error('testResult div not found!');
+                return;
+            }
+            
+            if (result.locations) {
+                // Multiple locations result
+                resultsDiv.innerHTML = `
+                    <div class="success">Multiple locations result detected</div>
+                    <div>Total locations: ${result.total_locations}</div>
+                    <div>Total files: ${result.total_files}</div>
+                    <div>Total size: ${result.total_size}</div>
+                `;
+            } else {
+                // Single location result
+                resultsDiv.innerHTML = `
+                    <div class="success">Single location result detected</div>
+                    <div>File count: ${result.file_count}</div>
+                    <div>Total size: ${result.total_size}</div>
+                    <div>Scan duration: ${result.scan_duration}</div>
+                `;
+            }
+        }
+        
+        // Mock the calculateSafetySummary function
+        function calculateSafetySummary(files) {
+            let safeCount = 0, cautionCount = 0, riskyCount = 0, totalFiles = 0;
+            let safeSize = 0, cautionSize = 0, riskySize = 0;
+            
+            files.forEach(file => {
+                if (!file.is_dir && file.safety_classification) {
+                    totalFiles++;
+                    const size = file.size || 0;
+                    
+                    const safetyLevel = String(file.safety_classification.level || '').trim();
+                    switch (safetyLevel) {
+                        case 'Safe':
+                            safeCount++;
+                            safeSize += size;
+                            break;
+                        case 'Caution':
+                            cautionCount++;
+                            cautionSize += size;
+                            break;
+                        case 'Risky':
+                            riskyCount++;
+                            riskySize += size;
+                            break;
+                    }
+                }
+            });
+            
+            return {
+                safeCount,
+                cautionCount,
+                riskyCount,
+                safeSize,
+                cautionSize,
+                riskySize,
+                safePercentage: totalFiles > 0 ? Math.round((safeCount / totalFiles) * 100) : 0,
+                cautionPercentage: totalFiles > 0 ? Math.round((cautionCount / totalFiles) * 100) : 0,
+                riskyPercentage: totalFiles > 0 ? Math.round((riskyCount / totalFiles) * 100) : 0
+            };
+        }
+        
+        function testDisplayScanResult() {
+            // Test with single location result (like what the backend returns)
+            const singleLocationResult = {
+                id: "test_location",
+                name: "Test Location",
+                path: "/test/path",
+                file_count: 150,
+                total_size: 1024000,
+                scan_duration: "2.5s",
+                files: [
+                    { name: "file1.txt", size: 1000, is_dir: false, safety_classification: { level: "Safe" } },
+                    { name: "file2.txt", size: 2000, is_dir: false, safety_classification: { level: "Caution" } },
+                    { name: "file3.txt", size: 3000, is_dir: false, safety_classification: { level: "Risky" } }
+                ]
+            };
+            
+            displayScanResult(singleLocationResult);
+        }
+        
+        function testSafetySummary() {
+            const testFiles = [
+                { name: "file1.txt", size: 1000, is_dir: false, safety_classification: { level: "Safe" } },
+                { name: "file2.txt", size: 2000, is_dir: false, safety_classification: { level: "Caution" } },
+                { name: "file3.txt", size: 3000, is_dir: false, safety_classification: { level: "Risky" } },
+                { name: "file4.txt", size: 1500, is_dir: false, safety_classification: { level: "Safe" } }
+            ];
+            
+            const summary = calculateSafetySummary(testFiles);
+            document.getElementById('safetyResult').innerHTML = `
+                <div class="success">Safety summary calculated successfully</div>
+                <div>Safe: ${summary.safeCount} files (${summary.safePercentage}%) - ${summary.safeSize} bytes</div>
+                <div>Caution: ${summary.cautionCount} files (${summary.cautionPercentage}%) - ${summary.cautionSize} bytes</div>
+                <div>Risky: ${summary.riskyCount} files (${summary.riskyPercentage}%) - ${summary.riskySize} bytes</div>
+            `;
+        }
+    </script>
+</body>
+</html>
