@@ -1,6 +1,6 @@
 import './style.css';
 import './app.css';
-import { ScanCacheLocation, ScanMultipleCacheLocations, GetCacheLocationsFromConfig, GetSystemInfo, IsScanning, StopScan, GetScanProgress, GetLastScanResult, GetSafetyClassificationSummary, ClassifyFileSafety, GetSafetyClassificationRules, GetFilesBySafetyLevel, DeleteFilesWithConfirmation, ConfirmDeletion, GetDeletionProgress, StopDeletion, RestoreFromBackup, GetDeletionHistory, GetAvailableBackups, ValidateFilesForDeletion, GetDeletionSystemStatus, RevealInFinder, GetBackupBrowserData, GetBackupSessionDetails, PreviewRestoreOperation, RestoreFromBackupWithOptions, DeleteBackupSession, CleanupBackupsByAge, GetBackupProgress } from '../wailsjs/go/main/App.js';
+import { ScanCacheLocation, ScanMultipleCacheLocations, GetCacheLocationsFromConfig, GetSystemInfo, IsScanning, StopScan, GetScanProgress, GetLastScanResult, GetSafetyClassificationSummary, ClassifyFileSafety, GetSafetyClassificationRules, GetFilesBySafetyLevel, DeleteFilesWithConfirmation, ConfirmDeletion, GetDeletionProgress, StopDeletion, RestoreFromBackup, GetDeletionHistory, GetAvailableBackups, ValidateFilesForDeletion, GetDeletionSystemStatus, RevealInFinder, GetBackupBrowserData, GetBackupSessionDetails, PreviewRestoreOperation, RestoreFromBackupWithOptions, DeleteBackupSession, CleanupBackupsByAge, GetBackupProgress, GetSettings, UpdateSettings, GetBackupSettings, UpdateBackupSettings, GetSafetySettings, UpdateSafetySettings, GetPerformanceSettings, UpdatePerformanceSettings, GetPrivacySettings, UpdatePrivacySettings, GetUISettings, UpdateUISettings, ResetSettings, ExportSettings, ImportSettings, GetSettingsInfo, ValidateSettings } from '../wailsjs/go/main/App.js';
 
 // Global state
 let isScanning = false;
@@ -56,6 +56,10 @@ function createUI() {
                         </div>
                     </div>
                     <div class="header-actions">
+                        <button id="settingsButton" class="btn btn-secondary">
+                            <span class="btn-icon">⚙️</span>
+                            Settings Modal
+                        </button>
                         <button id="backupManagerButton" class="btn btn-secondary">
                             <span class="btn-icon">💾</span>
                             Backup Manager
@@ -179,6 +183,176 @@ function createUI() {
                 </div>
             </main>
         </div>
+        
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content settings-modal">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button id="closeSettingsModal" class="modal-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-container">
+                        <!-- Settings Navigation -->
+                        <div class="settings-nav">
+                            <button class="settings-category-btn active" data-category="backup">
+                                <span class="icon">💾</span>
+                                Backup
+                            </button>
+                            <button class="settings-category-btn" data-category="safety">
+                                <span class="icon">🛡️</span>
+                                Safety
+                            </button>
+                            <button class="settings-category-btn" data-category="performance">
+                                <span class="icon">⚡</span>
+                                Performance
+                            </button>
+                            <button class="settings-category-btn" data-category="privacy">
+                                <span class="icon">🔒</span>
+                                Privacy
+                            </button>
+                            <button class="settings-category-btn" data-category="ui">
+                                <span class="icon">🎨</span>
+                                Interface
+                            </button>
+                        </div>
+                        
+                        <!-- Settings Content -->
+                        <div class="settings-content">
+                            <!-- Backup Settings -->
+                            <div id="backup-settings" class="settings-section active">
+                                <h3>Backup Preferences</h3>
+                                <form id="backup-form" class="settings-form">
+                                    <div class="form-group">
+                                        <label for="backup-retention">Retention Period (days)</label>
+                                        <input type="number" id="backup-retention" name="retention_days" min="1" max="365" value="30">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="backup-max-size">Max Backup Size (MB)</label>
+                                        <input type="number" id="backup-max-size" name="max_backup_size_mb" min="100" max="10240" value="1024">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="backup-auto-cleanup" name="auto_cleanup" checked>
+                                            Enable Automatic Cleanup
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="backup-compress" name="compress_backups" checked>
+                                            Compress Backups
+                                        </label>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Safety Settings -->
+                            <div id="safety-settings" class="settings-section">
+                                <h3>Safety Settings</h3>
+                                <form id="safety-form" class="settings-form">
+                                    <div class="form-group">
+                                        <label for="safety-default-level">Default Safety Level</label>
+                                        <select id="safety-default-level" name="default_safe_level">
+                                            <option value="Safe">Safe</option>
+                                            <option value="Caution">Caution</option>
+                                            <option value="Risky">Risky</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="safety-confirm-deletion" name="confirm_deletion" checked>
+                                            Confirm File Deletion
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="safety-show-warnings" name="show_safety_warnings" checked>
+                                            Show Safety Warnings
+                                        </label>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Performance Settings -->
+                            <div id="performance-settings" class="settings-section">
+                                <h3>Performance Settings</h3>
+                                <form id="performance-form" class="settings-form">
+                                    <div class="form-group">
+                                        <label for="perf-scan-depth">Scan Depth</label>
+                                        <input type="number" id="perf-scan-depth" name="scan_depth" min="1" max="20" value="5">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="perf-concurrent-scans">Concurrent Scans</label>
+                                        <input type="number" id="perf-concurrent-scans" name="concurrent_scans" min="1" max="10" value="3">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="perf-show-progress" name="show_progress" checked>
+                                            Show Progress Indicators
+                                        </label>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- Privacy Settings -->
+                            <div id="privacy-settings" class="settings-section">
+                                <h3>Privacy Settings</h3>
+                                <form id="privacy-form" class="settings-form">
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="privacy-enable-cloud-ai" name="enable_cloud_ai">
+                                            Enable Cloud AI Features
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="privacy-share-analytics" name="share_analytics">
+                                            Share Analytics Data
+                                        </label>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="privacy-collect-error-logs" name="collect_error_logs" checked>
+                                            Collect Error Logs
+                                        </label>
+                                    </div>
+                                </form>
+                            </div>
+                            
+                            <!-- UI Settings -->
+                            <div id="ui-settings" class="settings-section">
+                                <h3>Interface Settings</h3>
+                                <form id="ui-form" class="settings-form">
+                                    <div class="form-group">
+                                        <label for="ui-theme">Theme</label>
+                                        <select id="ui-theme" name="theme">
+                                            <option value="light">Light</option>
+                                            <option value="dark">Dark</option>
+                                            <option value="auto">Auto</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="ui-font-size">Font Size</label>
+                                        <input type="number" id="ui-font-size" name="font_size" min="8" max="24" value="14">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>
+                                            <input type="checkbox" id="ui-show-notifications" name="show_notifications" checked>
+                                            Show Notifications
+                                        </label>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveSettings" class="btn btn-primary">Save Settings</button>
+                    <button id="resetSettings" class="btn btn-secondary">Reset to Defaults</button>
+                    <button id="closeSettingsModal2" class="btn btn-outline">Close</button>
+                </div>
+            </div>
+        </div>
     `;
 }
 
@@ -250,6 +424,47 @@ function setupEventListeners() {
     }
     if (backupManagerButton) {
         backupManagerButton.addEventListener('click', showBackupManager);
+    }
+    
+    // Settings event listeners
+    const settingsButton = document.getElementById('settingsButton');
+    const settingsModal = document.getElementById('settingsModal');
+    const closeSettingsModal = document.getElementById('closeSettingsModal');
+    const closeSettingsModal2 = document.getElementById('closeSettingsModal2');
+    const saveSettings = document.getElementById('saveSettings');
+    const resetSettings = document.getElementById('resetSettings');
+
+    if (settingsButton) {
+        settingsButton.addEventListener('click', showSettingsModal);
+    }
+
+    if (closeSettingsModal) {
+        closeSettingsModal.addEventListener('click', hideSettingsModal);
+    }
+    if (closeSettingsModal2) {
+        closeSettingsModal2.addEventListener('click', hideSettingsModal);
+    }
+    if (saveSettings) {
+        saveSettings.addEventListener('click', saveAllSettings);
+    }
+    if (resetSettings) {
+        resetSettings.addEventListener('click', resetAllSettings);
+    }
+    
+    // Settings category navigation
+    document.querySelectorAll('.settings-category-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            switchSettingsCategory(e.target.dataset.category);
+        });
+    });
+    
+    // Close modal when clicking outside
+    if (settingsModal) {
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                hideSettingsModal();
+            }
+        });
     }
     
     // Add event delegation for dynamically created buttons
@@ -462,243 +677,256 @@ function calculateSafetySummary(files) {
 }
 
 function displayScanResult(result) {
-    console.log('displayScanResult called with:', result);
-    const resultsDiv = document.getElementById('scanResults');
-    const exportButton = document.getElementById('exportButton');
-    
-    if (!resultsDiv) {
-        console.error('scanResults div not found!');
-        return;
+    try {
+        console.log('displayScanResult called with:', result);
+        if (typeof result === 'string') {
+            try { result = JSON.parse(result); } catch (e) { console.error('Failed to parse result string:', e); }
+        }
+        // Log result size and structure
+        if (result) {
+            const resultStr = JSON.stringify(result);
+            console.log('Scan result size (bytes):', resultStr.length);
+            console.log('Scan result keys:', Object.keys(result));
+        }
+        const resultsDiv = document.getElementById('scanResults');
+        const exportButton = document.getElementById('exportButton');
+        if (!resultsDiv) {
+            console.error('scanResults div not found!');
+            return;
+        }
+        // --- FIX: Calculate safetySummary before rendering ---
+        let safetySummary;
+        if (result.locations) {
+            // Multi-location: flatten all files
+            const allFiles = result.locations.flatMap(loc => loc.files || []);
+            safetySummary = calculateSafetySummary(allFiles);
+        } else {
+            // Single location
+            safetySummary = calculateSafetySummary(result.files || []);
+        }
+        // ...existing code for rendering...
+        if (result.locations) {
+            resultsDiv.innerHTML = `
+                <div class="results-summary">
+                    <div class="summary-card">
+                        <div class="summary-icon">📊</div>
+                        <div class="summary-content">
+                            <h3>${result.total_locations}</h3>
+                            <p>Locations Scanned</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon">📁</div>
+                        <div class="summary-content">
+                            <h3>${result.total_files.toLocaleString()}</h3>
+                            <p>Total Files</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon">💾</div>
+                        <div class="summary-content">
+                            <h3>${formatBytes(result.total_size)}</h3>
+                            <p>Total Size</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon">⏱️</div>
+                        <div class="summary-content">
+                            <h3>${formatDuration(result.scan_duration)}</h3>
+                            <p>Scan Duration</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="safety-summary">
+                    <h3>Safety Analysis</h3>
+                    <div class="safety-summary-grid">
+                        <div class="safety-card safe-card">
+                            <div class="safety-icon">✅</div>
+                            <div class="safety-content">
+                                <h4>${safetySummary.safeCount}</h4>
+                                <p>Safe Files (${safetySummary.safePercentage}%)</p>
+                                <span class="safety-size">${formatBytes(safetySummary.safeSize)}</span>
+                            </div>
+                        </div>
+                        <div class="safety-card caution-card">
+                            <div class="safety-icon">⚠️</div>
+                            <div class="safety-content">
+                                <h4>${safetySummary.cautionCount}</h4>
+                                <p>Caution Files (${safetySummary.cautionPercentage}%)</p>
+                                <span class="safety-size">${formatBytes(safetySummary.cautionSize)}</span>
+                            </div>
+                        </div>
+                        <div class="safety-card risky-card">
+                            <div class="safety-icon">🚫</div>
+                            <div class="safety-content">
+                                <h4>${safetySummary.riskyCount}</h4>
+                                <p>Risky Files (${safetySummary.riskyPercentage}%)</p>
+                                <span class="safety-size">${formatBytes(safetySummary.riskySize)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cache-files-section">
+                    <div class="section-header">
+                        <h3>Cache Files by Location</h3>
+                        <div class="file-controls">
+                            <div class="search-box">
+                                <input type="text" id="fileSearch" placeholder="Search files..." class="search-input">
+                                <span class="search-icon">🔍</span>
+                            </div>
+                            <div class="filter-controls">
+                                <select id="sizeFilter" class="filter-select">
+                                    <option value="">All Sizes</option>
+                                    <option value="large">Large (&gt;10MB)</option>
+                                    <option value="medium">Medium (1-10MB)</option>
+                                    <option value="small">Small (&lt;1MB)</option>
+                                </select>
+                                <select id="typeFilter" class="filter-select">
+                                    <option value="">All Types</option>
+                                    <option value="file">Files Only</option>
+                                    <option value="directory">Directories Only</option>
+                                </select>
+                                <select id="safetyFilter" class="filter-select">
+                                    <option value="">All Safety Levels</option>
+                                    <option value="Safe">✅ Safe</option>
+                                    <option value="Caution">⚠️ Caution</option>
+                                    <option value="Risky">🚫 Risky</option>
+                                </select>
+                            </div>
+                            <div class="bulk-actions">
+                                <button id="selectAllSafeButton" class="btn btn-success" onclick="selectAllSafeFiles()">
+                                    <span class="btn-icon">✅</span>
+                                    Select All Safe Items
+                                </button>
+                                <button id="clearSelectionButton" class="btn btn-outline" onclick="clearFileSelection()">
+                                    <span class="btn-icon">🔲</span>
+                                    Clear Selection
+                                </button>
+                                <button id="undoButton" class="btn btn-secondary" onclick="showUndoOptions()">
+                                    <span class="btn-icon">🔄</span>
+                                    Undo/Restore
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="locations-results">
+                        ${result.locations.map(loc => createLocationCard(loc)).join('')}
+                    </div>
+                </div>
+            `;
+        } else {
+            resultsDiv.innerHTML = `
+                <div class="results-summary">
+                    <div class="summary-card">
+                        <div class="summary-icon">📁</div>
+                        <div class="summary-content">
+                            <h3>${result.file_count.toLocaleString()}</h3>
+                            <p>Files Found</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon">💾</div>
+                        <div class="summary-content">
+                            <h3>${formatBytes(result.total_size)}</h3>
+                            <p>Total Size</p>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon">⏱️</div>
+                        <div class="summary-content">
+                            <h3>${formatDuration(result.scan_duration)}</h3>
+                            <p>Scan Duration</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="safety-summary">
+                    <h3>Safety Analysis</h3>
+                    <div class="safety-summary-grid">
+                        <div class="safety-card safe-card">
+                            <div class="safety-icon">✅</div>
+                            <div class="safety-content">
+                                <h4>${safetySummary.safeCount}</h4>
+                                <p>Safe Files (${safetySummary.safePercentage}%)</p>
+                                <span class="safety-size">${formatBytes(safetySummary.safeSize)}</span>
+                            </div>
+                        </div>
+                        <div class="safety-card caution-card">
+                            <div class="safety-icon">⚠️</div>
+                            <div class="safety-content">
+                                <h4>${safetySummary.cautionCount}</h4>
+                                <p>Caution Files (${safetySummary.cautionPercentage}%)</p>
+                                <span class="safety-size">${formatBytes(safetySummary.cautionSize)}</span>
+                            </div>
+                        </div>
+                        <div class="safety-card risky-card">
+                            <div class="safety-icon">🚫</div>
+                            <div class="safety-content">
+                                <h4>${safetySummary.riskyCount}</h4>
+                                <p>Risky Files (${safetySummary.riskyPercentage}%)</p>
+                                <span class="safety-size">${formatBytes(safetySummary.riskySize)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cache-files-section">
+                    <div class="section-header">
+                        <h3>Cache Files</h3>
+                        <div class="file-controls">
+                            <div class="search-box">
+                                <input type="text" id="fileSearch" placeholder="Search files..." class="search-input">
+                                <span class="search-icon">🔍</span>
+                            </div>
+                            <div class="filter-controls">
+                                <select id="sizeFilter" class="filter-select">
+                                    <option value="">All Sizes</option>
+                                    <option value="large">Large (&gt;10MB)</option>
+                                    <option value="medium">Medium (1-10MB)</option>
+                                    <option value="small">Small (&lt;1MB)</option>
+                                </select>
+                                <select id="typeFilter" class="filter-select">
+                                    <option value="">All Types</option>
+                                    <option value="file">Files Only</option>
+                                    <option value="directory">Directories Only</option>
+                                </select>
+                                <select id="safetyFilter" class="filter-select">
+                                    <option value="">All Safety Levels</option>
+                                    <option value="Safe">✅ Safe</option>
+                                    <option value="Caution">⚠️ Caution</option>
+                                    <option value="Risky">🚫 Risky</option>
+                                </select>
+                            </div>
+                            <div class="bulk-actions">
+                                <button id="selectAllSafeButton" class="btn btn-success" onclick="selectAllSafeFiles()">
+                                    <span class="btn-icon">✅</span>
+                                    Select All Safe Items
+                                </button>
+                                <button id="clearSelectionButton" class="btn btn-outline" onclick="clearFileSelection()">
+                                    <span class="btn-icon">🔲</span>
+                                    Clear Selection
+                                </button>
+                                <button id="undoButton" class="btn btn-secondary" onclick="showUndoOptions()">
+                                    <span class="btn-icon">🔄</span>
+                                    Undo/Restore
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="location-details">
+                        <h4>${result.name}</h4>
+                        <p class="location-path">${result.path}</p>
+                        ${result.error ? `<p class="error-text">Error: ${result.error}</p>` : ''}
+                        ${result.files ? createFileTable(result.files, result.id) : ''}
+                    </div>
+                </div>
+            `;
+        }
+        // Setup event listeners for the new controls
+        setupFileControls();
+        exportButton.disabled = false;
+    } catch (err) {
+        console.error('Error rendering scan result:', err, result);
+        showError('An error occurred while rendering scan results. See console for details.');
     }
-    
-    if (result.locations) {
-        // Calculate overall safety summary
-        const allFiles = result.locations.flatMap(loc => loc.files || []);
-        const safetySummary = calculateSafetySummary(allFiles);
-        
-        // Multiple locations result
-        resultsDiv.innerHTML = `
-            <div class="results-summary">
-                <div class="summary-card">
-                    <div class="summary-icon">📊</div>
-                    <div class="summary-content">
-                        <h3>${result.total_locations}</h3>
-                        <p>Locations Scanned</p>
-                    </div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-icon">📁</div>
-                    <div class="summary-content">
-                        <h3>${result.total_files.toLocaleString()}</h3>
-                        <p>Total Files</p>
-                    </div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-icon">💾</div>
-                    <div class="summary-content">
-                        <h3>${formatBytes(result.total_size)}</h3>
-                        <p>Total Size</p>
-                    </div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-icon">⏱️</div>
-                    <div class="summary-content">
-                        <h3>${formatDuration(result.scan_duration)}</h3>
-                        <p>Scan Duration</p>
-                    </div>
-                </div>
-            </div>
-            <div class="safety-summary">
-                <h3>Safety Analysis</h3>
-                <div class="safety-summary-grid">
-                    <div class="safety-card safe-card">
-                        <div class="safety-icon">✅</div>
-                        <div class="safety-content">
-                            <h4>${safetySummary.safeCount}</h4>
-                            <p>Safe Files (${safetySummary.safePercentage}%)</p>
-                            <span class="safety-size">${formatBytes(safetySummary.safeSize)}</span>
-                        </div>
-                    </div>
-                    <div class="safety-card caution-card">
-                        <div class="safety-icon">⚠️</div>
-                        <div class="safety-content">
-                            <h4>${safetySummary.cautionCount}</h4>
-                            <p>Caution Files (${safetySummary.cautionPercentage}%)</p>
-                            <span class="safety-size">${formatBytes(safetySummary.cautionSize)}</span>
-                        </div>
-                    </div>
-                    <div class="safety-card risky-card">
-                        <div class="safety-icon">🚫</div>
-                        <div class="safety-content">
-                            <h4>${safetySummary.riskyCount}</h4>
-                            <p>Risky Files (${safetySummary.riskyPercentage}%)</p>
-                            <span class="safety-size">${formatBytes(safetySummary.riskySize)}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="cache-files-section">
-                <div class="section-header">
-                    <h3>Cache Files by Location</h3>
-                    <div class="file-controls">
-                        <div class="search-box">
-                            <input type="text" id="fileSearch" placeholder="Search files..." class="search-input">
-                            <span class="search-icon">🔍</span>
-                        </div>
-                        <div class="filter-controls">
-                            <select id="sizeFilter" class="filter-select">
-                                <option value="">All Sizes</option>
-                                <option value="large">Large (>10MB)</option>
-                                <option value="medium">Medium (1-10MB)</option>
-                                <option value="small">Small (<1MB)</option>
-                            </select>
-                            <select id="typeFilter" class="filter-select">
-                                <option value="">All Types</option>
-                                <option value="file">Files Only</option>
-                                <option value="directory">Directories Only</option>
-                            </select>
-                            <select id="safetyFilter" class="filter-select">
-                                <option value="">All Safety Levels</option>
-                                <option value="Safe">✅ Safe</option>
-                                <option value="Caution">⚠️ Caution</option>
-                                <option value="Risky">🚫 Risky</option>
-                            </select>
-                        </div>
-                        <div class="bulk-actions">
-                            <button id="selectAllSafeButton" class="btn btn-success" onclick="selectAllSafeFiles()">
-                                <span class="btn-icon">✅</span>
-                                Select All Safe Items
-                            </button>
-                            <button id="clearSelectionButton" class="btn btn-outline" onclick="clearFileSelection()">
-                                <span class="btn-icon">🔲</span>
-                                Clear Selection
-                            </button>
-                            <button id="undoButton" class="btn btn-secondary" onclick="showUndoOptions()">
-                                <span class="btn-icon">🔄</span>
-                                Undo/Restore
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="locations-results">
-                    ${result.locations.map(loc => createLocationCard(loc)).join('')}
-                </div>
-            </div>
-        `;
-    } else {
-        // Calculate safety summary for single location
-        const safetySummary = calculateSafetySummary(result.files || []);
-        
-        // Single location result
-        resultsDiv.innerHTML = `
-            <div class="results-summary">
-                <div class="summary-card">
-                    <div class="summary-icon">📁</div>
-                    <div class="summary-content">
-                        <h3>${result.file_count.toLocaleString()}</h3>
-                        <p>Files Found</p>
-                    </div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-icon">💾</div>
-                    <div class="summary-content">
-                        <h3>${formatBytes(result.total_size)}</h3>
-                        <p>Total Size</p>
-                    </div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-icon">⏱️</div>
-                    <div class="summary-content">
-                        <h3>${formatDuration(result.scan_duration)}</h3>
-                        <p>Scan Duration</p>
-                    </div>
-                </div>
-            </div>
-            <div class="safety-summary">
-                <h3>Safety Analysis</h3>
-                <div class="safety-summary-grid">
-                    <div class="safety-card safe-card">
-                        <div class="safety-icon">✅</div>
-                        <div class="safety-content">
-                            <h4>${safetySummary.safeCount}</h4>
-                            <p>Safe Files (${safetySummary.safePercentage}%)</p>
-                            <span class="safety-size">${formatBytes(safetySummary.safeSize)}</span>
-                        </div>
-                    </div>
-                    <div class="safety-card caution-card">
-                        <div class="safety-icon">⚠️</div>
-                        <div class="safety-content">
-                            <h4>${safetySummary.cautionCount}</h4>
-                            <p>Caution Files (${safetySummary.cautionPercentage}%)</p>
-                            <span class="safety-size">${formatBytes(safetySummary.cautionSize)}</span>
-                        </div>
-                    </div>
-                    <div class="safety-card risky-card">
-                        <div class="safety-icon">🚫</div>
-                        <div class="safety-content">
-                            <h4>${safetySummary.riskyCount}</h4>
-                            <p>Risky Files (${safetySummary.riskyPercentage}%)</p>
-                            <span class="safety-size">${formatBytes(safetySummary.riskySize)}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="cache-files-section">
-                <div class="section-header">
-                    <h3>Cache Files</h3>
-                    <div class="file-controls">
-                        <div class="search-box">
-                            <input type="text" id="fileSearch" placeholder="Search files..." class="search-input">
-                            <span class="search-icon">🔍</span>
-                        </div>
-                        <div class="filter-controls">
-                            <select id="sizeFilter" class="filter-select">
-                                <option value="">All Sizes</option>
-                                <option value="large">Large (>10MB)</option>
-                                <option value="medium">Medium (1-10MB)</option>
-                                <option value="small">Small (<1MB)</option>
-                            </select>
-                            <select id="typeFilter" class="filter-select">
-                                <option value="">All Types</option>
-                                <option value="file">Files Only</option>
-                                <option value="directory">Directories Only</option>
-                            </select>
-                            <select id="safetyFilter" class="filter-select">
-                                <option value="">All Safety Levels</option>
-                                <option value="Safe">✅ Safe</option>
-                                <option value="Caution">⚠️ Caution</option>
-                                <option value="Risky">🚫 Risky</option>
-                            </select>
-                        </div>
-                        <div class="bulk-actions">
-                            <button id="selectAllSafeButton" class="btn btn-success" onclick="selectAllSafeFiles()">
-                                <span class="btn-icon">✅</span>
-                                Select All Safe Items
-                            </button>
-                            <button id="clearSelectionButton" class="btn btn-outline" onclick="clearFileSelection()">
-                                <span class="btn-icon">🔲</span>
-                                Clear Selection
-                            </button>
-                            <button id="undoButton" class="btn btn-secondary" onclick="showUndoOptions()">
-                                <span class="btn-icon">🔄</span>
-                                Undo/Restore
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="location-details">
-                    <h4>${result.name}</h4>
-                    <p class="location-path">${result.path}</p>
-                    ${result.error ? `<p class="error-text">Error: ${result.error}</p>` : ''}
-                    ${result.files ? createFileTable(result.files, result.id) : ''}
-                </div>
-            </div>
-        `;
-    }
-    
-    // Setup event listeners for the new controls
-    setupFileControls();
-    exportButton.disabled = false;
 }
 
 function createLocationCard(location) {
@@ -738,12 +966,17 @@ function createFileTable(files, locationId) {
     if (!files || files.length === 0) {
         return '<p class="no-files">No files found</p>';
     }
-    
-    // Sort files by size (largest first)
+    // Limit to first 500 files for performance
+    const MAX_FILES = 500;
     const sortedFiles = [...files].sort((a, b) => b.size - a.size);
-    
+    const limitedFiles = sortedFiles.slice(0, MAX_FILES);
+    let moreMsg = '';
+    if (files.length > MAX_FILES) {
+        moreMsg = `<div class="file-table-warning">Showing first ${MAX_FILES} of ${files.length} files. Please refine your filters to see more.</div>`;
+    }
     return `
         <div class="file-table-container">
+            ${moreMsg}
             <table class="file-table" data-location-id="${locationId}">
                 <thead>
                     <tr>
@@ -757,7 +990,7 @@ function createFileTable(files, locationId) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${sortedFiles.map(file => createFileRow(file)).join('')}
+                    ${limitedFiles.map(file => createFileRow(file)).join('')}
                 </tbody>
             </table>
         </div>
@@ -1421,13 +1654,13 @@ function startProgressPolling() {
     if (progressInterval) {
         clearInterval(progressInterval);
     }
-    
+
+    let gracePeriodStart = null;
     // Poll every 200ms for progress updates
     progressInterval = setInterval(async () => {
         try {
             // Check if still scanning
             const scanning = await IsScanning();
-            
             // Check for timeout (scan should not take more than 5 minutes)
             const elapsedTime = scanStartTime ? Date.now() - scanStartTime : 0;
             if (elapsedTime > 300000) { // 5 minutes timeout
@@ -1437,22 +1670,17 @@ function startProgressPolling() {
                 showError('Scan timed out after 5 minutes. Please try again.');
                 return;
             }
-            
             // Always try to get the result, even if scanning is false
-            // This handles race conditions where scanning completes but state isn't updated yet
             try {
                 const result = await GetLastScanResult();
                 console.log('Raw result from GetLastScanResult:', result);
                 const scanResult = JSON.parse(result);
-                console.log('Parsed scan result:', scanResult);
-                
                 // Check if we have a valid result (not just "no_result" status)
                 if (scanResult && scanResult.status !== 'no_result' && scanResult.id) {
                     // We have a valid scan result, display it
                     console.log('Got valid scan result:', scanResult);
                     clearInterval(progressInterval);
                     progressInterval = null;
-                    
                     displayScanResult(scanResult);
                     currentScanResult = scanResult;
                     setScanningState(false);
@@ -1464,16 +1692,23 @@ function startProgressPolling() {
             } catch (error) {
                 console.log('No result available yet:', error.message);
             }
-            
             if (!scanning) {
-                // Scan completed but no result yet, wait a bit more
-                console.log('Scanning stopped but no result yet, continuing to poll...');
+                // Scan completed but no result yet, wait a bit more (10s grace period)
+                if (!gracePeriodStart) {
+                    gracePeriodStart = Date.now();
+                } else if (Date.now() - gracePeriodStart > 10000) { // 10 seconds
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                    setScanningState(false);
+                    showError('Scan completed but no result was returned. Please try again.');
+                    return;
+                }
+            } else {
+                gracePeriodStart = null;
             }
-            
             // Update progress
             updateProgressTime();
             showProgress('Scanning in progress...', true);
-            
         } catch (error) {
             console.error('Error polling progress:', error);
             showProgress('Scanning... (progress unavailable)', true);
@@ -1529,6 +1764,9 @@ function showDeletionConfirmationDialog(dialog, validation) {
     const modal = document.createElement('div');
     modal.className = 'deletion-confirmation-modal';
     
+    // Store dialog data in a global variable to avoid inline JSON issues
+    window.currentDeletionDialog = dialog;
+    
     const warningsHTML = dialog.warnings && dialog.warnings.length > 0 ? `
         <div class="warnings-section">
             <h4>⚠️ Warnings</h4>
@@ -1582,7 +1820,7 @@ function showDeletionConfirmationDialog(dialog, validation) {
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-outline" onclick="closeDeletionConfirmation()">Cancel</button>
-                    <button class="btn btn-danger" onclick="confirmDeletion('${JSON.stringify(dialog).replace(/'/g, "&#39;")}')">
+                    <button class="btn btn-danger" id="confirmDeletionBtn">
                         <span class="btn-icon">🗑️</span>
                         Confirm Deletion
                     </button>
@@ -1592,12 +1830,21 @@ function showDeletionConfirmationDialog(dialog, validation) {
     `;
     
     document.body.appendChild(modal);
+    
+    // Add event listener after the element is in the DOM
+    document.getElementById('confirmDeletionBtn').addEventListener('click', function() {
+        confirmDeletion(JSON.stringify(window.currentDeletionDialog));
+    });
 }
 
 function closeDeletionConfirmation() {
     const modal = document.querySelector('.deletion-confirmation-modal');
     if (modal) {
         modal.remove();
+    }
+    // Clean up global variable
+    if (window.currentDeletionDialog) {
+        delete window.currentDeletionDialog;
     }
 }
 
@@ -1646,6 +1893,16 @@ function monitorDeletionProgress(operationID) {
             const progressResult = await GetDeletionProgress(operationID);
             const progress = JSON.parse(progressResult);
             
+            // Check if this is an error response
+            if (progress.error || progress.status === 'error') {
+                console.error('Progress tracking error:', progress.message);
+                clearInterval(deletionProgressInterval);
+                deletionProgressInterval = null;
+                showError(`Progress monitoring failed: ${progress.message}`);
+                showProgress('Deletion monitoring failed', false);
+                return;
+            }
+            
             // Update progress display
             updateDeletionProgress(progress);
             
@@ -1656,8 +1913,8 @@ function monitorDeletionProgress(operationID) {
                 
                 if (progress.status === 'completed') {
                     showProgress('Deletion completed successfully!', false);
-                    // Refresh the file list or show success message
-                    showSuccessMessage(`Successfully deleted ${progress.files_processed} files`);
+                    // Show enhanced success message with details
+                    showDeletionSuccessMessage(progress);
                 } else {
                     showError(`Deletion ${progress.status}: ${progress.message}`);
                     showProgress('Deletion failed', false);
@@ -1725,6 +1982,56 @@ function showSuccessMessage(message) {
         }
     }, 5000);
 }
+
+function showDeletionSuccessMessage(progress) {
+    const filesDeleted = progress.files_processed || 0;
+    const totalSize = progress.total_size || 0;
+    const sizeFormatted = formatBytes(totalSize);
+    const elapsedTime = formatDuration(progress.elapsed_time || 0);
+    
+    const successContainer = document.createElement('div');
+    successContainer.className = 'success-container deletion-success';
+    successContainer.innerHTML = `
+        <div class="success-icon">🎉</div>
+        <div class="success-content">
+            <h4>Deletion Completed Successfully!</h4>
+            <div class="deletion-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Files Deleted:</span>
+                    <span class="stat-value">${filesDeleted}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Space Freed:</span>
+                    <span class="stat-value">${sizeFormatted}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Duration:</span>
+                    <span class="stat-value">${elapsedTime}</span>
+                </div>
+            </div>
+            <div class="deletion-message">
+                <p>All cache files have been safely deleted and backed up.</p>
+                <p class="backup-info">💾 Backup created - files can be restored if needed</p>
+            </div>
+        </div>
+        <button class="success-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    // Insert after the progress container
+    const progressContainer = document.getElementById('progressContainer');
+    if (progressContainer && progressContainer.parentNode) {
+        progressContainer.parentNode.insertBefore(successContainer, progressContainer.nextSibling);
+    }
+    
+    // Auto-hide after 8 seconds (longer for success messages)
+    setTimeout(() => {
+        if (successContainer.parentNode) {
+            successContainer.remove();
+        }
+    }, 8000);
+}
+
+
 
 // Undo functionality
 async function showUndoOptions() {
@@ -1906,8 +2213,6 @@ function displayBackupManager(data) {
                             <select id="backupFilter" class="filter-select">
                                 <option value="">All Operations</option>
                                 <option value="manual_deletion">Manual Deletion</option>
-                                <option value="cache_cleanup">Cache Cleanup</option>
-                                <option value="system_cleanup">System Cleanup</option>
                             </select>
                         </div>
                         <div class="bulk-actions">
@@ -2516,4 +2821,175 @@ function closeRestorePreview() {
     if (modal) {
         modal.remove();
     }
+}
+
+// Settings Management Functions
+let currentSettings = null;
+
+// Show settings modal
+function showSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        loadSettingsData();
+    }
+}
+
+// Hide settings modal
+function hideSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Load settings data from backend
+async function loadSettingsData() {
+    try {
+        showProgress('Loading settings...', true);
+        const result = await GetSettings();
+        currentSettings = JSON.parse(result);
+        populateSettingsForms();
+        showProgress('Settings loaded', false);
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        showError(`Failed to load settings: ${error.message}`);
+        showProgress('Failed to load settings', false);
+    }
+}
+
+// Populate settings forms with current data
+function populateSettingsForms() {
+    if (!currentSettings) return;
+
+    // Populate backup form
+    populateForm('backup-form', currentSettings.backup);
+    // Populate safety form
+    populateForm('safety-form', currentSettings.safety);
+    // Populate performance form
+    populateForm('performance-form', currentSettings.performance);
+    // Populate privacy form
+    populateForm('privacy-form', currentSettings.privacy);
+    // Populate UI form
+    populateForm('ui-form', currentSettings.ui);
+}
+
+// Helper function to populate a form with data
+function populateForm(formId, data) {
+    const form = document.getElementById(formId);
+    if (!form || !data) return;
+
+    Object.keys(data).forEach(key => {
+        const element = form.querySelector(`[name="${key}"]`);
+        if (!element) return;
+
+        if (element.type === 'checkbox') {
+            element.checked = data[key];
+        } else if (element.type === 'number') {
+            element.value = data[key];
+        } else {
+            element.value = data[key];
+        }
+    });
+}
+
+// Switch settings category
+function switchSettingsCategory(category) {
+    // Update navigation buttons
+    document.querySelectorAll('.settings-category-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-category="${category}"]`).classList.add('active');
+
+    // Update content sections
+    document.querySelectorAll('.settings-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    document.getElementById(`${category}-settings`).classList.add('active');
+}
+
+// Save all settings
+async function saveAllSettings() {
+    try {
+        showProgress('Saving settings...', true);
+        
+        // Collect data from all forms
+        const backupData = getFormData('backup-form');
+        const safetyData = getFormData('safety-form');
+        const performanceData = getFormData('performance-form');
+        const privacyData = getFormData('privacy-form');
+        const uiData = getFormData('ui-form');
+        
+        // Update settings object
+        if (currentSettings) {
+            currentSettings.backup = { ...currentSettings.backup, ...backupData };
+            currentSettings.safety = { ...currentSettings.safety, ...safetyData };
+            currentSettings.performance = { ...currentSettings.performance, ...performanceData };
+            currentSettings.privacy = { ...currentSettings.privacy, ...privacyData };
+            currentSettings.ui = { ...currentSettings.ui, ...uiData };
+            
+            // Save to backend
+            const result = await UpdateSettings(JSON.stringify(currentSettings));
+            const response = JSON.parse(result);
+            
+            if (response.status === 'success') {
+                showProgress('Settings saved successfully', false);
+                showSuccess('Settings saved successfully!');
+            } else {
+                showError('Failed to save settings');
+                showProgress('Failed to save settings', false);
+            }
+        }
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        showError(`Failed to save settings: ${error.message}`);
+        showProgress('Failed to save settings', false);
+    }
+}
+
+// Reset all settings to defaults
+async function resetAllSettings() {
+    if (!confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        showProgress('Resetting settings...', true);
+        const result = await ResetSettings();
+        const response = JSON.parse(result);
+        
+        if (response.status === 'success') {
+            currentSettings = response.settings;
+            populateSettingsForms();
+            showProgress('Settings reset successfully', false);
+            showSuccess('Settings reset to defaults!');
+        } else {
+            showError('Failed to reset settings');
+            showProgress('Failed to reset settings', false);
+        }
+    } catch (error) {
+        console.error('Error resetting settings:', error);
+        showError(`Failed to reset settings: ${error.message}`);
+        showProgress('Failed to reset settings', false);
+    }
+}
+
+// Helper function to get form data
+function getFormData(formId) {
+    const form = document.getElementById(formId);
+    const formData = new FormData(form);
+    const data = {};
+
+    for (let [key, value] of formData.entries()) {
+        const element = form.querySelector(`[name="${key}"]`);
+        if (element.type === 'checkbox') {
+            data[key] = element.checked;
+        } else if (element.type === 'number') {
+            data[key] = parseInt(value);
+        } else {
+            data[key] = value;
+        }
+    }
+
+    return data;
 }

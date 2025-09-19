@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 	
+	"cache_app/internal/config"
 	"cache_app/pkg/safety"
 	"cache_app/pkg/backup"
 	"cache_app/pkg/deletion"
@@ -25,6 +26,7 @@ type App struct {
 	deletionService  *deletion.DeletionService
 	progressManager  *deletion.ProgressManager
 	confirmationService *deletion.ConfirmationService
+	settingsManager  *config.SettingsManager
 	mu               sync.RWMutex
 }
 
@@ -46,12 +48,20 @@ func NewApp() *App {
 		confirmationService = deletion.NewConfirmationService()
 	}
 	
+	// Initialize settings manager
+	settingsManager, err := config.NewSettingsManager()
+	if err != nil {
+		log.Printf("Warning: Failed to initialize settings manager: %v", err)
+		settingsManager = nil
+	}
+	
 	return &App{
 		cacheScanner:        NewCacheScanner(),
 		backupSystem:        backupSystem,
 		deletionService:     deletionService,
 		progressManager:     progressManager,
 		confirmationService: confirmationService,
+		settingsManager:     settingsManager,
 	}
 }
 
@@ -752,6 +762,10 @@ func (a *App) ConfirmDeletion(dialogJSON string, filesJSON string, confirmed boo
 		return "", fmt.Errorf("deletion not confirmed by user")
 	}
 
+	// Reset deletion state and clear all operations before starting new operation (safety measure)
+	a.deletionService.ResetDeletionState()
+	a.deletionService.ClearAllOperations()
+
 	var dialog deletion.ConfirmationDialog
 	if err := json.Unmarshal([]byte(dialogJSON), &dialog); err != nil {
 		return "", fmt.Errorf("invalid dialog JSON: %w", err)
@@ -777,11 +791,16 @@ func (a *App) ConfirmDeletion(dialogJSON string, filesJSON string, confirmed boo
 
 	// Start deletion in goroutine
 	go func() {
-		defer a.progressManager.RemoveTracker(operationID)
+		// Don't remove tracker immediately - let it persist for a bit
+		defer func() {
+			// Keep tracker for a short time after completion for frontend polling
+			time.Sleep(5 * time.Second)
+			a.progressManager.RemoveTracker(operationID)
+		}()
 		
 		tracker.SetStatus("starting", "Starting deletion operation...")
 		
-		result, err := a.deletionService.DeleteFilesWithBackup(request)
+		result, err := a.deletionService.DeleteFilesWithBackupAndTracker(request, tracker)
 		if err != nil {
 			tracker.Fail(fmt.Sprintf("Deletion failed: %v", err))
 			return
@@ -806,7 +825,18 @@ func (a *App) GetDeletionProgress(operationID string) (string, error) {
 
 	tracker, err := a.progressManager.GetTracker(operationID)
 	if err != nil {
-		return "", err
+		// Return a structured JSON response instead of raw error
+		errorResponse := map[string]interface{}{
+			"operation": operationID,
+			"status":    "error",
+			"message":   err.Error(),
+			"error":     true,
+		}
+		jsonResponse, jsonErr := json.Marshal(errorResponse)
+		if jsonErr != nil {
+			return "", fmt.Errorf("failed to marshal error response: %w", jsonErr)
+		}
+		return string(jsonResponse), nil
 	}
 
 	progressJSON, err := tracker.GetProgressJSON()
@@ -1317,6 +1347,382 @@ func (a *App) RevealInFinder(filePath string) (string, error) {
 	jsonResult, err := json.Marshal(result)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// Settings Management Methods
+
+// GetSettings returns the current application settings
+func (a *App) GetSettings() (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	settings := a.settingsManager.GetSettings()
+	result, err := json.Marshal(settings)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal settings: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// UpdateSettings updates the application settings
+func (a *App) UpdateSettings(settingsJSON string) (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	var settings config.Settings
+	if err := json.Unmarshal([]byte(settingsJSON), &settings); err != nil {
+		return "", fmt.Errorf("invalid settings JSON: %w", err)
+	}
+	
+	if err := a.settingsManager.UpdateSettings(&settings); err != nil {
+		return "", fmt.Errorf("failed to update settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":   "success",
+		"message":  "Settings updated successfully",
+		"settings": a.settingsManager.GetSettings(),
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// GetBackupSettings returns the current backup settings
+func (a *App) GetBackupSettings() (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	settings := a.settingsManager.GetSettings()
+	result, err := json.Marshal(settings.Backup)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal backup settings: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// UpdateBackupSettings updates the backup settings
+func (a *App) UpdateBackupSettings(backupSettingsJSON string) (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	var backupSettings config.BackupSettings
+	if err := json.Unmarshal([]byte(backupSettingsJSON), &backupSettings); err != nil {
+		return "", fmt.Errorf("invalid backup settings JSON: %w", err)
+	}
+	
+	if err := a.settingsManager.UpdateBackupSettings(backupSettings); err != nil {
+		return "", fmt.Errorf("failed to update backup settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":   "success",
+		"message":  "Backup settings updated successfully",
+		"settings": a.settingsManager.GetSettings().Backup,
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// GetSafetySettings returns the current safety settings
+func (a *App) GetSafetySettings() (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	settings := a.settingsManager.GetSettings()
+	result, err := json.Marshal(settings.Safety)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal safety settings: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// UpdateSafetySettings updates the safety settings
+func (a *App) UpdateSafetySettings(safetySettingsJSON string) (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	var safetySettings config.SafetySettings
+	if err := json.Unmarshal([]byte(safetySettingsJSON), &safetySettings); err != nil {
+		return "", fmt.Errorf("invalid safety settings JSON: %w", err)
+	}
+	
+	if err := a.settingsManager.UpdateSafetySettings(safetySettings); err != nil {
+		return "", fmt.Errorf("failed to update safety settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":   "success",
+		"message":  "Safety settings updated successfully",
+		"settings": a.settingsManager.GetSettings().Safety,
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// GetPerformanceSettings returns the current performance settings
+func (a *App) GetPerformanceSettings() (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	settings := a.settingsManager.GetSettings()
+	result, err := json.Marshal(settings.Performance)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal performance settings: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// UpdatePerformanceSettings updates the performance settings
+func (a *App) UpdatePerformanceSettings(performanceSettingsJSON string) (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	var performanceSettings config.PerformanceSettings
+	if err := json.Unmarshal([]byte(performanceSettingsJSON), &performanceSettings); err != nil {
+		return "", fmt.Errorf("invalid performance settings JSON: %w", err)
+	}
+	
+	if err := a.settingsManager.UpdatePerformanceSettings(performanceSettings); err != nil {
+		return "", fmt.Errorf("failed to update performance settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":   "success",
+		"message":  "Performance settings updated successfully",
+		"settings": a.settingsManager.GetSettings().Performance,
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// GetPrivacySettings returns the current privacy settings
+func (a *App) GetPrivacySettings() (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	settings := a.settingsManager.GetSettings()
+	result, err := json.Marshal(settings.Privacy)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal privacy settings: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// UpdatePrivacySettings updates the privacy settings
+func (a *App) UpdatePrivacySettings(privacySettingsJSON string) (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	var privacySettings config.PrivacySettings
+	if err := json.Unmarshal([]byte(privacySettingsJSON), &privacySettings); err != nil {
+		return "", fmt.Errorf("invalid privacy settings JSON: %w", err)
+	}
+	
+	if err := a.settingsManager.UpdatePrivacySettings(privacySettings); err != nil {
+		return "", fmt.Errorf("failed to update privacy settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":   "success",
+		"message":  "Privacy settings updated successfully",
+		"settings": a.settingsManager.GetSettings().Privacy,
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// GetUISettings returns the current UI settings
+func (a *App) GetUISettings() (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	settings := a.settingsManager.GetSettings()
+	result, err := json.Marshal(settings.UI)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal UI settings: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// UpdateUISettings updates the UI settings
+func (a *App) UpdateUISettings(uiSettingsJSON string) (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	var uiSettings config.UISettings
+	if err := json.Unmarshal([]byte(uiSettingsJSON), &uiSettings); err != nil {
+		return "", fmt.Errorf("invalid UI settings JSON: %w", err)
+	}
+	
+	if err := a.settingsManager.UpdateUISettings(uiSettings); err != nil {
+		return "", fmt.Errorf("failed to update UI settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":   "success",
+		"message":  "UI settings updated successfully",
+		"settings": a.settingsManager.GetSettings().UI,
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// ResetSettings resets all settings to default values
+func (a *App) ResetSettings() (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	if err := a.settingsManager.ResetToDefaults(); err != nil {
+		return "", fmt.Errorf("failed to reset settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":   "success",
+		"message":  "Settings reset to defaults successfully",
+		"settings": a.settingsManager.GetSettings(),
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// ExportSettings exports the current settings to a file
+func (a *App) ExportSettings(exportPath string) (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	if err := a.settingsManager.ExportSettings(exportPath); err != nil {
+		return "", fmt.Errorf("failed to export settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":      "success",
+		"message":     "Settings exported successfully",
+		"export_path": exportPath,
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// ImportSettings imports settings from a file
+func (a *App) ImportSettings(importPath string) (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	if err := a.settingsManager.ImportSettings(importPath); err != nil {
+		return "", fmt.Errorf("failed to import settings: %w", err)
+	}
+	
+	result := map[string]interface{}{
+		"status":      "success",
+		"message":     "Settings imported successfully",
+		"import_path": importPath,
+		"settings":    a.settingsManager.GetSettings(),
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result: %w", err)
+	}
+	
+	return string(jsonResult), nil
+}
+
+// GetSettingsInfo returns information about the settings file
+func (a *App) GetSettingsInfo() (string, error) {
+	if a.settingsManager == nil {
+		return "", fmt.Errorf("settings manager not available")
+	}
+	
+	info := a.settingsManager.GetSettingsInfo()
+	result, err := json.Marshal(info)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal settings info: %w", err)
+	}
+	
+	return string(result), nil
+}
+
+// ValidateSettings validates the provided settings JSON
+func (a *App) ValidateSettings(settingsJSON string) (string, error) {
+	var settings config.Settings
+	if err := json.Unmarshal([]byte(settingsJSON), &settings); err != nil {
+		return "", fmt.Errorf("invalid settings JSON: %w", err)
+	}
+	
+	errors := config.ValidateSettings(&settings)
+	
+	result := map[string]interface{}{
+		"is_valid": len(errors) == 0,
+		"errors":   errors,
+	}
+	
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal validation result: %w", err)
 	}
 	
 	return string(jsonResult), nil

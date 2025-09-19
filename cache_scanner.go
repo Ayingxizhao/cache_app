@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 	
@@ -176,7 +177,18 @@ func (cs *CacheScanner) ScanLocation(locationID, locationName, path string) (*Ca
 		// Get file info
 		info, err := d.Info()
 		if err != nil {
-			log.Printf("Failed to get file info for %s: %v", path, err)
+			// Check if this is a "no such file or directory" error for cache files
+			// These are common and expected for cache directories, so we'll skip logging them
+			if os.IsNotExist(err) && isCacheFile(path) {
+				// Skip this file silently - it's likely a transient cache file
+				return nil
+			}
+			
+			// Log other errors (permission denied, etc.) but continue scanning
+			if !os.IsNotExist(err) {
+				log.Printf("Failed to get file info for %s: %v", path, err)
+			}
+			
 			location.Files = append(location.Files, CacheFile{
 				Path:  path,
 				Error: fmt.Sprintf("Failed to get file info: %v", err),
@@ -362,6 +374,40 @@ func getLastAccessTime(info os.FileInfo) time.Time {
 		return info.ModTime() // Fallback to modification time
 	}
 	return info.ModTime()
+}
+
+// isCacheFile checks if a file path appears to be a cache file that might be transient
+func isCacheFile(path string) bool {
+	// Check for common cache file patterns
+	cachePatterns := []string{
+		"/Cache/Cache_Data/",
+		"/Cache/",
+		"/cache/",
+		"/tmp/",
+		"/temp/",
+	}
+	
+	for _, pattern := range cachePatterns {
+		if strings.Contains(path, pattern) {
+			return true
+		}
+	}
+	
+	// Check for cache file extensions
+	cacheExtensions := []string{
+		".cache",
+		".tmp",
+		".temp",
+	}
+	
+	ext := strings.ToLower(filepath.Ext(path))
+	for _, cacheExt := range cacheExtensions {
+		if ext == cacheExt {
+			return true
+		}
+	}
+	
+	return false
 }
 
 // ToJSON converts a struct to JSON string

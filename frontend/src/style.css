@@ -1283,3 +1283,142 @@ body {
         min-width: auto;
     }
 }
+
+/* Enhanced Success Message Styles */
+.success-container {
+    background: linear-gradient(135deg, var(--success-color), #28c748);
+    border-radius: var(--border-radius-large);
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 600px;
+    box-shadow: var(--shadow-heavy);
+    border: 1px solid rgba(48, 209, 88, 0.3);
+    position: relative;
+    animation: slideInSuccess 0.5s ease-out;
+}
+
+.success-container.deletion-success {
+    background: linear-gradient(135deg, var(--success-color), #28c748);
+    padding: 24px;
+}
+
+.success-icon {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.success-content h4 {
+    margin: 0 0 15px 0;
+    font-size: 1.4em;
+    font-weight: 600;
+    color: white;
+}
+
+.success-content p {
+    margin: 8px 0;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
+}
+
+.deletion-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--border-radius);
+    backdrop-filter: blur(10px);
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.2em;
+    font-weight: 600;
+    color: white;
+}
+
+.deletion-message {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.backup-info {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-style: italic;
+    margin-top: 8px;
+}
+
+.success-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5em;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.success-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideInSuccess {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .success-container {
+        margin: 15px;
+        padding: 20px;
+    }
+    
+    .deletion-stats {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .stat-item {
+        text-align: left;
+    }
+    
+    .stat-label {
+        display: inline;
+        margin-right: 8px;
+    }
+    
+    .stat-value {
+        display: inline;
+    }
+}

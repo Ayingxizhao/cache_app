@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Cache App</title>
+    <link rel="stylesheet" href="./styles/settings.css">
+    <link rel="stylesheet" href="./styles/navigation.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navigation Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="app-title">Cache App Settings</h1>
+                <nav class="main-nav">
+                    <a href="./index.html" class="nav-link">Home</a>
+                    <a href="./settings.html" class="nav-link active">Settings</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="settings-container">
+                <!-- Settings Navigation -->
+                <aside class="settings-nav">
+                    <h2>Settings Categories</h2>
+                    <nav class="settings-categories">
+                        <button class="category-btn active" data-category="backup">
+                            <span class="icon">💾</span>
+                            Backup Preferences
+                        </button>
+                        <button class="category-btn" data-category="safety">
+                            <span class="icon">🛡️</span>
+                            Safety Settings
+                        </button>
+                        <button class="category-btn" data-category="performance">
+                            <span class="icon">⚡</span>
+                            Performance
+                        </button>
+                        <button class="category-btn" data-category="privacy">
+                            <span class="icon">🔒</span>
+                            Privacy
+                        </button>
+                        <button class="category-btn" data-category="ui">
+                            <span class="icon">🎨</span>
+                            Interface
+                        </button>
+                    </nav>
+                </aside>
+
+                <!-- Settings Content -->
+                <div class="settings-content">
+                    <!-- Backup Settings -->
+                    <section id="backup-settings" class="settings-section active">
+                        <h2>Backup Preferences</h2>
+                        <form id="backup-form" class="settings-form">
+                            <div class="form-group">
+                                <label for="backup-location">Default Backup Location</label>
+                                <div class="input-group">
+                                    <input type="text" id="backup-location" name="default_location" placeholder="~/CacheCleaner/Backups">
+                                    <button type="button" class="btn-secondary" id="browse-backup-location">Browse</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="use-custom-location" name="use_custom_location">
+                                    Use Custom Backup Location
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="retention-days">Retention Period (days)</label>
+                                <input type="number" id="retention-days" name="retention_days" min="1" max="365" value="30">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="max-backup-size">Maximum Backup Size (MB)</label>
+                                <input type="number" id="max-backup-size" name="max_backup_size_mb" min="100" max="10240" value="1024">
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="auto-cleanup" name="auto_cleanup" checked>
+                                    Enable Automatic Cleanup
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="cleanup-threshold">Cleanup Threshold (days)</label>
+                                <input type="number" id="cleanup-threshold" name="cleanup_threshold_days" min="1" max="30" value="7">
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="compress-backups" name="compress_backups" checked>
+                                    Compress Backups
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="verify-integrity" name="verify_integrity" checked>
+                                    Verify Backup Integrity
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="create-manifest" name="create_manifest" checked>
+                                    Create Backup Manifest
+                                </label>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Save Backup Settings</button>
+                                <button type="button" class="btn-secondary" id="reset-backup">Reset to Defaults</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- Safety Settings -->
+                    <section id="safety-settings" class="settings-section">
+                        <h2>Safety Settings</h2>
+                        <form id="safety-form" class="settings-form">
+                            <div class="form-group">
+                                <label for="default-safe-level">Default Safety Level</label>
+                                <select id="default-safe-level" name="default_safe_level">
+                                    <option value="Safe">Safe</option>
+                                    <option value="Caution">Caution</option>
+                                    <option value="Risky">Risky</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="require-confirmation" name="require_confirmation" checked>
+                                    Require Confirmation for Deletions
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="show-safety-warnings" name="show_safety_warnings" checked>
+                                    Show Safety Warnings
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirm-deletion" name="confirm_deletion" checked>
+                                    Confirm File Deletion
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirm-large-files" name="confirm_large_files" checked>
+                                    Confirm Large File Deletion
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="confirm-system-files" name="confirm_system_files" checked>
+                                    Confirm System File Deletion
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="large-file-threshold">Large File Threshold (MB)</label>
+                                <input type="number" id="large-file-threshold" name="large_file_threshold_mb" min="1" max="1024" value="100">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="safe-age-threshold">Safe Age Threshold (days)</label>
+                                <input type="number" id="safe-age-threshold" name="safe_age_threshold_days" min="1" max="365" value="30">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="caution-age-threshold">Caution Age Threshold (days)</label>
+                                <input type="number" id="caution-age-threshold" name="caution_age_threshold_days" min="1" max="30" value="7">
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="protect-system-paths" name="protect_system_paths" checked>
+                                    Protect System Paths
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="protect-user-data" name="protect_user_data" checked>
+                                    Protect User Data
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="protect-dev-files" name="protect_dev_files" checked>
+                                    Protect Development Files
+                                </label>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Save Safety Settings</button>
+                                <button type="button" class="btn-secondary" id="reset-safety">Reset to Defaults</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- Performance Settings -->
+                    <section id="performance-settings" class="settings-section">
+                        <h2>Performance Settings</h2>
+                        <form id="performance-form" class="settings-form">
+                            <div class="form-group">
+                                <label for="scan-depth">Scan Depth</label>
+                                <input type="number" id="scan-depth" name="scan_depth" min="1" max="20" value="5">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="max-file-size">Maximum File Size (MB)</label>
+                                <input type="number" id="max-file-size" name="max_file_size_mb" min="1" max="10240" value="500">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="concurrent-scans">Concurrent Scans</label>
+                                <input type="number" id="concurrent-scans" name="concurrent_scans" min="1" max="10" value="3">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="scan-timeout">Scan Timeout (seconds)</label>
+                                <input type="number" id="scan-timeout" name="scan_timeout_seconds" min="30" max="3600" value="300">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="max-memory-usage">Maximum Memory Usage (MB)</label>
+                                <input type="number" id="max-memory-usage" name="max_memory_usage_mb" min="64" max="4096" value="512">
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="enable-caching" name="enable_caching" checked>
+                                    Enable Caching
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="cache-size">Cache Size (MB)</label>
+                                <input type="number" id="cache-size" name="cache_size_mb" min="1" max="1024" value="64">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="update-interval">Update Interval (ms)</label>
+                                <input type="number" id="update-interval" name="update_interval_ms" min="100" max="10000" value="1000">
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="show-progress" name="show_progress" checked>
+                                    Show Progress Indicators
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="verbose-logging" name="verbose_logging">
+                                    Enable Verbose Logging
+                                </label>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Save Performance Settings</button>
+                                <button type="button" class="btn-secondary" id="reset-performance">Reset to Defaults</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- Privacy Settings -->
+                    <section id="privacy-settings" class="settings-section">
+                        <h2>Privacy Settings</h2>
+                        <form id="privacy-form" class="settings-form">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="enable-cloud-ai" name="enable_cloud_ai">
+                                    Enable Cloud AI Features
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="share-analytics" name="share_analytics">
+                                    Share Analytics Data
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="share-crash-reports" name="share_crash_reports">
+                                    Share Crash Reports
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="collect-usage-stats" name="collect_usage_stats">
+                                    Collect Usage Statistics
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="collect-error-logs" name="collect_error_logs" checked>
+                                    Collect Error Logs
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="collect-performance" name="collect_performance">
+                                    Collect Performance Data
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="retain-logs-days">Retain Logs (days)</label>
+                                <input type="number" id="retain-logs-days" name="retain_logs_days" min="1" max="365" value="7">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="retain-stats-days">Retain Statistics (days)</label>
+                                <input type="number" id="retain-stats-days" name="retain_stats_days" min="1" max="365" value="30">
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="auto-delete-old-data" name="auto_delete_old_data" checked>
+                                    Automatically Delete Old Data
+                                </label>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Save Privacy Settings</button>
+                                <button type="button" class="btn-secondary" id="reset-privacy">Reset to Defaults</button>
+                            </div>
+                        </form>
+                    </section>
+
+                    <!-- UI Settings -->
+                    <section id="ui-settings" class="settings-section">
+                        <h2>Interface Settings</h2>
+                        <form id="ui-form" class="settings-form">
+                            <div class="form-group">
+                                <label for="theme">Theme</label>
+                                <select id="theme" name="theme">
+                                    <option value="light">Light</option>
+                                    <option value="dark">Dark</option>
+                                    <option value="auto">Auto</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="language">Language</label>
+                                <select id="language" name="language">
+                                    <option value="en">English</option>
+                                    <option value="es">Español</option>
+                                    <option value="fr">Français</option>
+                                    <option value="de">Deutsch</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="font-size">Font Size</label>
+                                <input type="number" id="font-size" name="font_size" min="8" max="24" value="14">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="window-width">Window Width (pixels)</label>
+                                <input type="number" id="window-width" name="window_width" min="800" max="3840" value="1024">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="window-height">Window Height (pixels)</label>
+                                <input type="number" id="window-height" name="window_height" min="600" max="2160" value="768">
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="remember-window-size" name="remember_window_size" checked>
+                                    Remember Window Size
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="show-notifications" name="show_notifications" checked>
+                                    Show Notifications
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="notification-sound" name="notification_sound" checked>
+                                    Notification Sound
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="notification-duration">Notification Duration (ms)</label>
+                                <input type="number" id="notification-duration" name="notification_duration_ms" min="1000" max="10000" value="3000">
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="high-contrast" name="high_contrast">
+                                    High Contrast Mode
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="reduce-animations" name="reduce_animations">
+                                    Reduce Animations
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="screen-reader" name="screen_reader">
+                                    Screen Reader Support
+                                </label>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn-primary">Save UI Settings</button>
+                                <button type="button" class="btn-secondary" id="reset-ui">Reset to Defaults</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Global Actions -->
+            <div class="global-actions">
+                <button id="export-settings" class="btn-secondary">Export Settings</button>
+                <button id="import-settings" class="btn-secondary">Import Settings</button>
+                <button id="reset-all-settings" class="btn-danger">Reset All Settings</button>
+            </div>
+        </main>
+
+        <!-- Status Messages -->
+        <div id="status-messages" class="status-messages"></div>
+    </div>
+
+    <!-- File Input for Import -->
+    <input type="file" id="import-file-input" accept=".json" style="display: none;">
+
+    <script src="./components/settings-form.js"></script>
+</body>
+</html>

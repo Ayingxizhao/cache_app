@@ -17,6 +17,8 @@ export function DeleteFilesWithBackup(arg1:string,arg2:string):Promise<string>;
 
 export function DeleteFilesWithConfirmation(arg1:string,arg2:string,arg3:boolean,arg4:boolean):Promise<string>;
 
+export function ExportSettings(arg1:string):Promise<string>;
+
 export function GetAvailableBackups():Promise<string>;
 
 export function GetBackupBrowserData():Promise<string>;
@@ -28,6 +30,8 @@ export function GetBackupProgress():Promise<string>;
 export function GetBackupSession(arg1:string):Promise<string>;
 
 export function GetBackupSessionDetails(arg1:string):Promise<string>;
+
+export function GetBackupSettings():Promise<string>;
 
 export function GetBackupSystemStatus():Promise<string>;
 
@@ -45,21 +49,37 @@ export function GetFilesBySafetyLevel(arg1:string,arg2:string):Promise<string>;
 
 export function GetLastScanResult():Promise<string>;
 
+export function GetPerformanceSettings():Promise<string>;
+
+export function GetPrivacySettings():Promise<string>;
+
 export function GetSafetyClassificationRules():Promise<string>;
 
 export function GetSafetyClassificationSummary(arg1:string):Promise<string>;
 
+export function GetSafetySettings():Promise<string>;
+
 export function GetScanProgress():Promise<string>;
+
+export function GetSettings():Promise<string>;
+
+export function GetSettingsInfo():Promise<string>;
 
 export function GetSystemInfo():Promise<string>;
 
+export function GetUISettings():Promise<string>;
+
 export function Greet(arg1:string):Promise<string>;
+
+export function ImportSettings(arg1:string):Promise<string>;
 
 export function IsScanning():Promise<boolean>;
 
 export function ListBackupSessions():Promise<string>;
 
 export function PreviewRestoreOperation(arg1:string,arg2:string):Promise<string>;
+
+export function ResetSettings():Promise<string>;
 
 export function RestoreFiles(arg1:string,arg2:string,arg3:boolean):Promise<string>;
 
@@ -81,6 +101,20 @@ export function StopDeletion(arg1:string):Promise<void>;
 
 export function StopScan():Promise<void>;
 
+export function UpdateBackupSettings(arg1:string):Promise<string>;
+
+export function UpdatePerformanceSettings(arg1:string):Promise<string>;
+
+export function UpdatePrivacySettings(arg1:string):Promise<string>;
+
+export function UpdateSafetySettings(arg1:string):Promise<string>;
+
+export function UpdateSettings(arg1:string):Promise<string>;
+
+export function UpdateUISettings(arg1:string):Promise<string>;
+
 export function ValidateFilesForDeletion(arg1:string,arg2:string):Promise<string>;
+
+export function ValidateSettings(arg1:string):Promise<string>;
 
 export function VerifyBackupIntegrity(arg1:string):Promise<string>;

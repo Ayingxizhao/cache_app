@@ -34,6 +34,10 @@ export function DeleteFilesWithConfirmation(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['DeleteFilesWithConfirmation'](arg1, arg2, arg3, arg4);
 }
 
+export function ExportSettings(arg1) {
+  return window['go']['main']['App']['ExportSettings'](arg1);
+}
+
 export function GetAvailableBackups() {
   return window['go']['main']['App']['GetAvailableBackups']();
 }
@@ -56,6 +60,10 @@ export function GetBackupSession(arg1) {
 
 export function GetBackupSessionDetails(arg1) {
   return window['go']['main']['App']['GetBackupSessionDetails'](arg1);
+}
+
+export function GetBackupSettings() {
+  return window['go']['main']['App']['GetBackupSettings']();
 }
 
 export function GetBackupSystemStatus() {
@@ -90,6 +98,14 @@ export function GetLastScanResult() {
   return window['go']['main']['App']['GetLastScanResult']();
 }
 
+export function GetPerformanceSettings() {
+  return window['go']['main']['App']['GetPerformanceSettings']();
+}
+
+export function GetPrivacySettings() {
+  return window['go']['main']['App']['GetPrivacySettings']();
+}
+
 export function GetSafetyClassificationRules() {
   return window['go']['main']['App']['GetSafetyClassificationRules']();
 }
@@ -98,16 +114,36 @@ export function GetSafetyClassificationSummary(arg1) {
   return window['go']['main']['App']['GetSafetyClassificationSummary'](arg1);
 }
 
+export function GetSafetySettings() {
+  return window['go']['main']['App']['GetSafetySettings']();
+}
+
 export function GetScanProgress() {
   return window['go']['main']['App']['GetScanProgress']();
+}
+
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
+export function GetSettingsInfo() {
+  return window['go']['main']['App']['GetSettingsInfo']();
 }
 
 export function GetSystemInfo() {
   return window['go']['main']['App']['GetSystemInfo']();
 }
 
+export function GetUISettings() {
+  return window['go']['main']['App']['GetUISettings']();
+}
+
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
+}
+
+export function ImportSettings(arg1) {
+  return window['go']['main']['App']['ImportSettings'](arg1);
 }
 
 export function IsScanning() {
@@ -120,6 +156,10 @@ export function ListBackupSessions() {
 
 export function PreviewRestoreOperation(arg1, arg2) {
   return window['go']['main']['App']['PreviewRestoreOperation'](arg1, arg2);
+}
+
+export function ResetSettings() {
+  return window['go']['main']['App']['ResetSettings']();
 }
 
 export function RestoreFiles(arg1, arg2, arg3) {
@@ -162,8 +202,36 @@ export function StopScan() {
   return window['go']['main']['App']['StopScan']();
 }
 
+export function UpdateBackupSettings(arg1) {
+  return window['go']['main']['App']['UpdateBackupSettings'](arg1);
+}
+
+export function UpdatePerformanceSettings(arg1) {
+  return window['go']['main']['App']['UpdatePerformanceSettings'](arg1);
+}
+
+export function UpdatePrivacySettings(arg1) {
+  return window['go']['main']['App']['UpdatePrivacySettings'](arg1);
+}
+
+export function UpdateSafetySettings(arg1) {
+  return window['go']['main']['App']['UpdateSafetySettings'](arg1);
+}
+
+export function UpdateSettings(arg1) {
+  return window['go']['main']['App']['UpdateSettings'](arg1);
+}
+
+export function UpdateUISettings(arg1) {
+  return window['go']['main']['App']['UpdateUISettings'](arg1);
+}
+
 export function ValidateFilesForDeletion(arg1, arg2) {
   return window['go']['main']['App']['ValidateFilesForDeletion'](arg1, arg2);
+}
+
+export function ValidateSettings(arg1) {
+  return window['go']['main']['App']['ValidateSettings'](arg1);
 }
 
 export function VerifyBackupIntegrity(arg1) {

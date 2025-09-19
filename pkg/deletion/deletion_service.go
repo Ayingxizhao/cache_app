@@ -19,6 +19,9 @@ type DeletionService struct {
 	isDeleting   bool
 	mu           sync.RWMutex
 	logger       *DeletionLogger
+	progressTracker *ProgressTracker // Optional progress tracker for external monitoring
+	activeOperations map[string]bool // Track active operations by ID
+	operationsMu     sync.RWMutex    // Mutex for activeOperations
 }
 
 // DeletionProgress represents progress information during deletion operations
@@ -87,6 +90,7 @@ func NewDeletionService(backupSystem *backup.BackupSystem) *DeletionService {
 		progressChan: make(chan DeletionProgress, 100),
 		stopChan:     make(chan bool, 1),
 		logger:       NewDeletionLogger(),
+		activeOperations: make(map[string]bool),
 	}
 }
 
@@ -122,11 +126,38 @@ func (ds *DeletionService) setDeleting(deleting bool) {
 	ds.isDeleting = deleting
 }
 
+// ResetDeletionState resets the deletion state (for debugging/recovery)
+func (ds *DeletionService) ResetDeletionState() {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+	ds.isDeleting = false
+}
+
+// IsOperationActive checks if a specific operation is active
+func (ds *DeletionService) IsOperationActive(operationID string) bool {
+	ds.operationsMu.RLock()
+	defer ds.operationsMu.RUnlock()
+	return ds.activeOperations[operationID]
+}
+
+// SetOperationActive sets an operation as active
+func (ds *DeletionService) SetOperationActive(operationID string, active bool) {
+	ds.operationsMu.Lock()
+	defer ds.operationsMu.Unlock()
+	ds.activeOperations[operationID] = active
+}
+
+// ClearAllOperations clears all active operations
+func (ds *DeletionService) ClearAllOperations() {
+	ds.operationsMu.Lock()
+	defer ds.operationsMu.Unlock()
+	ds.activeOperations = make(map[string]bool)
+}
+
 // ValidateDeletionRequest performs comprehensive safety validation before deletion
 func (ds *DeletionService) ValidateDeletionRequest(request *DeletionRequest) (*SafetyCheckResult, error) {
-	if ds.IsDeleting() {
-		return nil, fmt.Errorf("deletion already in progress")
-	}
+	// Don't block validation if deletion is in progress - let the main deletion method handle it
+	// This allows us to validate requests even during ongoing operations
 
 	result := &SafetyCheckResult{
 		IsSafe:       true,
@@ -214,9 +245,25 @@ func (ds *DeletionService) ValidateDeletionRequest(request *DeletionRequest) (*S
 
 // DeleteFilesWithBackup safely deletes files after creating mandatory backups
 func (ds *DeletionService) DeleteFilesWithBackup(request *DeletionRequest) (*DeletionResult, error) {
-	if ds.IsDeleting() {
-		return nil, fmt.Errorf("deletion already in progress")
+	return ds.DeleteFilesWithBackupAndTracker(request, nil)
+}
+
+// DeleteFilesWithBackupAndTracker safely deletes files with optional progress tracker
+func (ds *DeletionService) DeleteFilesWithBackupAndTracker(request *DeletionRequest, tracker *ProgressTracker) (*DeletionResult, error) {
+	// Extract operation ID from the request or generate one
+	operationID := request.Operation
+	if operationID == "" {
+		operationID = fmt.Sprintf("deletion_%d", time.Now().Unix())
 	}
+	
+	// Check if this specific operation is already active
+	if ds.IsOperationActive(operationID) {
+		return nil, fmt.Errorf("operation %s already in progress", operationID)
+	}
+
+	// Mark this operation as active
+	ds.SetOperationActive(operationID, true)
+	defer ds.SetOperationActive(operationID, false)
 
 	ds.setDeleting(true)
 	defer ds.setDeleting(false)
@@ -241,11 +288,15 @@ func (ds *DeletionService) DeleteFilesWithBackup(request *DeletionRequest) (*Del
 	})
 
 	// Step 1: Validate deletion request
-	ds.sendProgress(DeletionProgress{
+	progress := DeletionProgress{
 		Operation: request.Operation,
 		Status:    "validating",
 		Message:   "Validating deletion request...",
-	})
+	}
+	ds.sendProgress(progress)
+	if tracker != nil {
+		tracker.SetStatus("validating", "Validating deletion request...")
+	}
 
 	safetyResult, err := ds.ValidateDeletionRequest(request)
 	if err != nil {
@@ -281,12 +332,17 @@ func (ds *DeletionService) DeleteFilesWithBackup(request *DeletionRequest) (*Del
 	}
 
 	// Step 2: Create mandatory backup
-	ds.sendProgress(DeletionProgress{
+	progress = DeletionProgress{
 		Operation:      request.Operation,
 		Status:         "backing_up",
 		Message:        "Creating mandatory backup...",
 		BackupProgress: 0,
-	})
+	}
+	ds.sendProgress(progress)
+	if tracker != nil {
+		tracker.SetStatus("backing_up", "Creating mandatory backup...")
+		tracker.SetBackupProgress(0, "Creating mandatory backup...")
+	}
 
 	backupSession, err := ds.backupSystem.BackupFiles(filesToDelete, request.Operation)
 	if err != nil {
@@ -310,12 +366,17 @@ func (ds *DeletionService) DeleteFilesWithBackup(request *DeletionRequest) (*Del
 		"backup_size":   backupSession.BackupSize,
 	})
 
-	ds.sendProgress(DeletionProgress{
+	progress = DeletionProgress{
 		Operation:      request.Operation,
 		Status:         "backup_complete",
 		Message:        "Backup completed, starting deletion...",
 		BackupProgress: 100,
-	})
+	}
+	ds.sendProgress(progress)
+	if tracker != nil {
+		tracker.SetStatus("backup_complete", "Backup completed, starting deletion...")
+		tracker.SetBackupProgress(100, "Backup completed, starting deletion...")
+	}
 
 	// Step 3: Delete files (if not dry run)
 	if !request.DryRun {
@@ -394,6 +455,11 @@ func (ds *DeletionService) DeleteFilesWithBackup(request *DeletionRequest) (*Del
 			}
 
 			ds.sendProgress(progress)
+			
+			// Update progress tracker if available
+			if tracker != nil {
+				tracker.SetFileProgress(filePath, i+1, len(filesToDelete), result.DeletedSize, result.TotalSize)
+			}
 		}
 	} else {
 		// Dry run - just log what would be deleted
@@ -407,6 +473,23 @@ func (ds *DeletionService) DeleteFilesWithBackup(request *DeletionRequest) (*Del
 
 	result.EndTime = time.Now()
 	result.Status = "completed"
+
+	// Send final progress update
+	finalProgress := DeletionProgress{
+		Operation:      request.Operation,
+		Status:         "completed",
+		Message:        fmt.Sprintf("Deletion completed: %d files deleted", result.DeletedCount),
+		FilesProcessed: result.DeletedCount,
+		TotalFiles:     result.TotalFiles,
+		Progress:       100,
+		BackupProgress: 100,
+		DeletionProgress: 100,
+	}
+	ds.sendProgress(finalProgress)
+	
+	if tracker != nil {
+		tracker.Complete(fmt.Sprintf("Deletion completed: %d files deleted", result.DeletedCount))
+	}
 
 	ds.logger.LogInfo("Deletion operation completed", map[string]interface{}{
 		"operation":      request.Operation,
