@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Handling Demo - Cache App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 300;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .demo-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .demo-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .demo-card h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+            font-size: 1.2rem;
+        }
+
+        .demo-card p {
+            margin: 0 0 15px 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #1e7e34;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: #138496;
+        }
+
+        .status-panel {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .status-panel h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .status-value {
+            color: #6c757d;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        .error-demo {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .error-demo h4 {
+            color: #c53030;
+            margin: 0 0 10px 0;
+        }
+
+        .loading-demo {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .loading-demo h4 {
+            color: #0369a1;
+            margin: 0 0 10px 0;
+        }
+
+        .notification-demo {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .notification-demo h4 {
+            color: #166534;
+            margin: 0 0 10px 0;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            border-top: 1px solid #e9ecef;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Error Handling Demo</h1>
+            <p>Comprehensive error handling and user feedback system for Cache App</p>
+        </div>
+
+        <div class="content">
+            <!-- Status Panel -->
+            <div class="status-panel">
+                <h3>System Status</h3>
+                <div class="status-item">
+                    <span class="status-label">Error Count:</span>
+                    <span class="status-value" id="errorCount">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Notification Count:</span>
+                    <span class="status-value" id="notificationCount">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Loading States:</span>
+                    <span class="status-value" id="loadingCount">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Last Error:</span>
+                    <span class="status-value" id="lastError">None</span>
+                </div>
+            </div>
+
+            <!-- Notification System Demo -->
+            <div class="section">
+                <h2>📢 Notification System</h2>
+                <p>Toast notifications for user feedback with different types and priorities.</p>
+                
+                <div class="notification-demo">
+                    <h4>Basic Notifications</h4>
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="showSuccess('Success!', 'Operation completed successfully')">
+                            Success Notification
+                        </button>
+                        <button class="btn btn-info" onclick="showInfo('Information', 'Here is some useful information')">
+                            Info Notification
+                        </button>
+                        <button class="btn btn-warning" onclick="showWarning('Warning', 'Please be careful with this operation')">
+                            Warning Notification
+                        </button>
+                        <button class="btn btn-danger" onclick="showError('Error', 'Something went wrong')">
+                            Error Notification
+                        </button>
+                    </div>
+                </div>
+
+                <div class="notification-demo">
+                    <h4>Advanced Notifications</h4>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="showAdvancedNotification()">
+                            Notification with Actions
+                        </button>
+                        <button class="btn btn-secondary" onclick="showPersistentNotification()">
+                            Persistent Notification
+                        </button>
+                        <button class="btn btn-info" onclick="showDetailedNotification()">
+                            Detailed Notification
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading System Demo -->
+            <div class="section">
+                <h2>⏳ Loading System</h2>
+                <p>Loading indicators and progress bars for long-running operations.</p>
+                
+                <div class="loading-demo">
+                    <h4>Loading Overlays</h4>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="showBasicLoading()">
+                            Basic Loading
+                        </button>
+                        <button class="btn btn-info" onclick="showProgressLoading()">
+                            Progress Loading
+                        </button>
+                        <button class="btn btn-warning" onclick="showCancellableLoading()">
+                            Cancellable Loading
+                        </button>
+                    </div>
+                </div>
+
+                <div class="loading-demo">
+                    <h4>Inline Loading</h4>
+                    <div class="button-group">
+                        <button class="btn btn-secondary" onclick="showInlineLoading()">
+                            Inline Loading
+                        </button>
+                        <button class="btn btn-info" onclick="showButtonLoading()">
+                            Button Loading
+                        </button>
+                        <button class="btn btn-warning" onclick="showSkeletonLoading()">
+                            Skeleton Loading
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Boundary Demo -->
+            <div class="section">
+                <h2>🛡️ Error Boundary</h2>
+                <p>Error handling and recovery mechanisms for JavaScript errors.</p>
+                
+                <div class="error-demo">
+                    <h4>Error Simulation</h4>
+                    <div class="button-group">
+                        <button class="btn btn-danger" onclick="simulateError()">
+                            Simulate JavaScript Error
+                        </button>
+                        <button class="btn btn-warning" onclick="simulateAsyncError()">
+                            Simulate Async Error
+                        </button>
+                        <button class="btn btn-info" onclick="simulateNetworkError()">
+                            Simulate Network Error
+                        </button>
+                    </div>
+                </div>
+
+                <div class="error-demo">
+                    <h4>Error Recovery</h4>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="testErrorRecovery()">
+                            Test Error Recovery
+                        </button>
+                        <button class="btn btn-secondary" onclick="showInlineError()">
+                            Show Inline Error
+                        </button>
+                        <button class="btn btn-info" onclick="wrapFunctionDemo()">
+                            Wrap Function Demo
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cache Operations Demo -->
+            <div class="section">
+                <h2>🗂️ Cache Operations</h2>
+                <p>Error handling integration with cache operations.</p>
+                
+                <div class="demo-grid">
+                    <div class="demo-card">
+                        <h3>Scan Operations</h3>
+                        <p>Test error handling in cache scanning operations.</p>
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="testScanLocation()">
+                                Scan Location
+                            </button>
+                            <button class="btn btn-info" onclick="testScanMultiple()">
+                                Scan Multiple
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="demo-card">
+                        <h3>Backup Operations</h3>
+                        <p>Test error handling in backup operations.</p>
+                        <div class="button-group">
+                            <button class="btn btn-success" onclick="testBackupFiles()">
+                                Backup Files
+                            </button>
+                            <button class="btn btn-info" onclick="testRestoreSession()">
+                                Restore Session
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="demo-card">
+                        <h3>Deletion Operations</h3>
+                        <p>Test error handling in deletion operations.</p>
+                        <div class="button-group">
+                            <button class="btn btn-warning" onclick="testDeleteFiles()">
+                                Delete Files
+                            </button>
+                            <button class="btn btn-danger" onclick="testSafeDelete()">
+                                Safe Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Management -->
+            <div class="section">
+                <h2>⚙️ System Management</h2>
+                <p>Manage errors, notifications, and system state.</p>
+                
+                <div class="button-group">
+                    <button class="btn btn-info" onclick="getErrorSummary()">
+                        Get Error Summary
+                    </button>
+                    <button class="btn btn-info" onclick="getNotificationSummary()">
+                        Get Notification Summary
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearErrors()">
+                        Clear Errors
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearNotifications()">
+                        Clear Notifications
+                    </button>
+                    <button class="btn btn-warning" onclick="getSystemInfo()">
+                        Get System Info
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code Examples -->
+            <div class="section">
+                <h2>💻 Code Examples</h2>
+                <p>Examples of how to use the error handling system in your code.</p>
+                
+                <h3>Basic Notification Usage</h3>
+                <div class="code-block">
+// Show a success notification
+showSuccess('Operation Complete', 'Files backed up successfully');
+
+// Show an error notification with actions
+showError('Backup Failed', 'Unable to create backup', {
+    actions: [
+        { id: 'retry', label: 'Try Again', style: 'primary' },
+        { id: 'dismiss', label: 'Dismiss', style: 'secondary' }
+    ]
+});
+
+// Show a progress notification
+const progressId = showProgress('Backing Up Files', 'Creating backup...', 100);
+updateProgress(progressId, 50, 'Halfway done...');
+completeProgress(progressId, 'Backup completed!');
+                </div>
+
+                <h3>Loading State Usage</h3>
+                <div class="code-block">
+// Show loading overlay
+const loadingId = showLoading({
+    title: 'Processing Files',
+    message: 'Please wait...',
+    cancellable: true
+});
+
+// Update loading progress
+updateProgress(loadingId, 75, 'Almost done...');
+
+// Hide loading
+hideLoading(loadingId);
+
+// Button loading state
+setButtonLoading(buttonElement, true); // Show loading
+setButtonLoading(buttonElement, false); // Hide loading
+                </div>
+
+                <h3>Error Handling Usage</h3>
+                <div class="code-block">
+// Wrap functions with error handling
+const safeFunction = wrapFunction(riskyFunction, {
+    operation: 'data_processing',
+    component: 'cache_scanner'
+});
+
+// Wrap async functions
+const safeAsyncFunction = wrapAsyncFunction(asyncRiskyFunction, {
+    operation: 'file_upload',
+    component: 'backup_system'
+});
+
+// Show inline error
+showInlineError(containerElement, error, {
+    message: 'Failed to load data',
+    showDetails: true
+});
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Error Handling System Demo - Cache App v1.0.0</p>
+            <p>Comprehensive error handling with user feedback and recovery mechanisms</p>
+        </div>
+    </div>
+
+    <!-- Include the error handling components -->
+    <script src="components/notifications.js"></script>
+    <script src="components/loading.js"></script>
+    <script src="components/error-boundary.js"></script>
+    <script src="components/error-integration.js"></script>
+
+    <script>
+        // Demo functions
+        function showAdvancedNotification() {
+            showNotification({
+                type: 'warning',
+                title: 'Action Required',
+                message: 'This operation requires your attention.',
+                details: 'Please review the changes before proceeding.',
+                actions: [
+                    { id: 'approve', label: 'Approve', style: 'success' },
+                    { id: 'reject', label: 'Reject', style: 'danger' },
+                    { id: 'dismiss', label: 'Dismiss', style: 'secondary' }
+                ],
+                persistent: true
+            });
+        }
+
+        function showPersistentNotification() {
+            showNotification({
+                type: 'info',
+                title: 'System Maintenance',
+                message: 'Scheduled maintenance will begin in 30 minutes.',
+                persistent: true,
+                duration: 0
+            });
+        }
+
+        function showDetailedNotification() {
+            showNotification({
+                type: 'error',
+                title: 'Backup Failed',
+                message: 'Unable to create backup due to insufficient disk space.',
+                details: 'Required: 2.5GB, Available: 1.2GB. Please free up space and try again.',
+                actions: [
+                    { id: 'retry', label: 'Try Again', style: 'primary' },
+                    { id: 'cleanup', label: 'Clean Up Space', style: 'warning' }
+                ]
+            });
+        }
+
+        function showBasicLoading() {
+            const loadingId = showLoading({
+                title: 'Processing...',
+                message: 'Please wait while we process your request.'
+            });
+
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                hideLoading(loadingId);
+            }, 3000);
+        }
+
+        function showProgressLoading() {
+            const loadingId = showProgress('Uploading Files', 'Uploading files to server...', 100);
+
+            // Simulate progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 10;
+                updateProgress(loadingId, progress, `Uploaded ${progress}%`);
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    completeProgress(loadingId, 'Upload completed!');
+                }
+            }, 500);
+        }
+
+        function showCancellableLoading() {
+            const loadingId = showLoading({
+                title: 'Long Operation',
+                message: 'This operation may take several minutes.',
+                cancellable: true,
+                actions: [
+                    { id: 'cancel', label: 'Cancel', style: 'danger' }
+                ]
+            });
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                hideLoading(loadingId);
+            }, 5000);
+        }
+
+        function showInlineLoading() {
+            const container = document.createElement('div');
+            container.innerHTML = '<p>Loading data...</p>';
+            document.querySelector('.content').appendChild(container);
+
+            const loadingElement = showInline(container, 'Loading...');
+
+            setTimeout(() => {
+                hideInline(loadingElement);
+                container.innerHTML = '<p>Data loaded successfully!</p>';
+            }, 2000);
+        }
+
+        function showButtonLoading() {
+            const button = document.createElement('button');
+            button.className = 'btn btn-primary';
+            button.innerHTML = '<span class="button-text">Click Me</span>';
+            document.querySelector('.content').appendChild(button);
+
+            setButtonLoading(button, true);
+
+            setTimeout(() => {
+                setButtonLoading(button, false);
+                button.innerHTML = '<span class="button-text">Done!</span>';
+            }, 2000);
+        }
+
+        function showSkeletonLoading() {
+            const container = document.createElement('div');
+            container.style.padding = '20px';
+            container.style.border = '1px solid #e9ecef';
+            container.style.borderRadius = '8px';
+            container.style.margin = '20px 0';
+            document.querySelector('.content').appendChild(container);
+
+            showSkeleton(container, [
+                { type: 'title', className: 'mb-3' },
+                { type: 'text', className: 'mb-2' },
+                { type: 'text', className: 'mb-2' },
+                { type: 'text', className: 'mb-3' },
+                { type: 'button', className: 'mt-3' }
+            ]);
+
+            setTimeout(() => {
+                hideSkeleton(container);
+                container.innerHTML = `
+                    <h3>Loaded Content</h3>
+                    <p>This is the actual content that was loaded.</p>
+                    <p>It replaces the skeleton loading animation.</p>
+                    <p>The skeleton provides a smooth loading experience.</p>
+                    <button class="btn btn-primary">Action Button</button>
+                `;
+            }, 3000);
+        }
+
+        function simulateError() {
+            throw new Error('This is a simulated JavaScript error for testing error boundaries');
+        }
+
+        function simulateAsyncError() {
+            Promise.reject(new Error('This is a simulated async error for testing error boundaries'));
+        }
+
+        function simulateNetworkError() {
+            fetch('/nonexistent-endpoint')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                })
+                .catch(error => {
+                    showError('Network Error', 'Failed to connect to server');
+                });
+        }
+
+        function testErrorRecovery() {
+            showNotification({
+                type: 'warning',
+                title: 'Error Recovery Test',
+                message: 'This notification demonstrates error recovery options.',
+                actions: [
+                    { id: 'retry', label: 'Retry Operation', style: 'primary' },
+                    { id: 'skip', label: 'Skip This Step', style: 'secondary' },
+                    { id: 'abort', label: 'Abort All', style: 'danger' }
+                ]
+            });
+        }
+
+        function showInlineError() {
+            const container = document.createElement('div');
+            container.style.margin = '20px 0';
+            document.querySelector('.content').appendChild(container);
+
+            showInlineError(container, new Error('This is an inline error display'), {
+                message: 'Failed to load component',
+                showDetails: true
+            });
+        }
+
+        function wrapFunctionDemo() {
+            const riskyFunction = () => {
+                if (Math.random() > 0.5) {
+                    throw new Error('Random error occurred');
+                }
+                return 'Function executed successfully';
+            };
+
+            const safeFunction = wrapFunction(riskyFunction, {
+                operation: 'demo_function',
+                component: 'error_demo'
+            });
+
+            try {
+                const result = safeFunction();
+                showSuccess('Function Demo', result);
+            } catch (error) {
+                showError('Function Demo', 'Function failed as expected');
+            }
+        }
+
+        // Cache operation demos (simulated)
+        function testScanLocation() {
+            showProgress('Scanning Cache Location', 'Scanning ~/Library/Caches...', 0);
+            
+            setTimeout(() => {
+                showSuccess('Scan Complete', 'Found 1,247 files (2.3GB) in cache location');
+            }, 2000);
+        }
+
+        function testScanMultiple() {
+            showProgress('Scanning Multiple Locations', 'Scanning 5 cache locations...', 5);
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress++;
+                updateProgress('progress_' + Date.now(), progress, `Scanned ${progress}/5 locations`);
+                
+                if (progress >= 5) {
+                    clearInterval(interval);
+                    showSuccess('Multiple Scan Complete', 'Scanned 5 locations, found 3,456 files (5.7GB)');
+                }
+            }, 1000);
+        }
+
+        function testBackupFiles() {
+            showProgress('Creating Backup', 'Backing up 50 files...', 50);
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 2;
+                updateProgress('backup_' + Date.now(), progress, `Backed up ${progress}/50 files`);
+                
+                if (progress >= 50) {
+                    clearInterval(interval);
+                    showSuccess('Backup Complete', 'Successfully backed up 50 files');
+                }
+            }, 200);
+        }
+
+        function testRestoreSession() {
+            showProgress('Restoring Files', 'Restoring from backup session...', 100);
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                updateProgress('restore_' + Date.now(), progress, `Restored ${progress}%`);
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    showSuccess('Restore Complete', 'Successfully restored 25 files from backup');
+                }
+            }, 300);
+        }
+
+        function testDeleteFiles() {
+            showNotification({
+                type: 'warning',
+                title: 'Confirm Deletion',
+                message: 'Are you sure you want to delete 15 files?',
+                actions: [
+                    { id: 'confirm', label: 'Yes, Delete', style: 'danger' },
+                    { id: 'cancel', label: 'Cancel', style: 'secondary' }
+                ]
+            });
+        }
+
+        function testSafeDelete() {
+            showProgress('Safe Deletion', 'Creating backup before deletion...', 100);
+            
+            setTimeout(() => {
+                showSuccess('Safe Delete Complete', 'Files deleted safely with backup created');
+            }, 3000);
+        }
+
+        // System management functions
+        function getErrorSummary() {
+            showInfo('Error Summary', 'Total errors: 0, Recent errors: None');
+        }
+
+        function getNotificationSummary() {
+            showInfo('Notification Summary', `Active notifications: ${notificationSystem.getCount()}`);
+        }
+
+        function clearErrors() {
+            showSuccess('Errors Cleared', 'All error records have been cleared');
+        }
+
+        function clearNotifications() {
+            dismissAllNotifications();
+            showSuccess('Notifications Cleared', 'All notifications have been dismissed');
+        }
+
+        function getSystemInfo() {
+            showInfo('System Info', 'macOS, App v1.0.0, Go v1.23+, Error handling: Active');
+        }
+
+        // Update status panel
+        function updateStatus() {
+            document.getElementById('errorCount').textContent = errorBoundary.getErrorCount();
+            document.getElementById('notificationCount').textContent = notificationSystem.getCount();
+            document.getElementById('loadingCount').textContent = loadingManager.getCount();
+            
+            const lastError = errorBoundary.getLastError();
+            document.getElementById('lastError').textContent = lastError ? 
+                lastError.error?.message || 'Unknown error' : 'None';
+        }
+
+        // Update status every second
+        setInterval(updateStatus, 1000);
+        updateStatus();
+
+        // Listen for notification actions
+        document.addEventListener('notificationAction', (event) => {
+            const { actionId } = event.detail;
+            
+            switch (actionId) {
+                case 'approve':
+                    showSuccess('Approved', 'Operation has been approved');
+                    break;
+                case 'reject':
+                    showError('Rejected', 'Operation has been rejected');
+                    break;
+                case 'retry':
+                    showInfo('Retrying', 'Retrying the operation...');
+                    break;
+                case 'cleanup':
+                    showInfo('Cleanup', 'Starting disk cleanup...');
+                    break;
+                case 'confirm':
+                    showProgress('Deleting Files', 'Deleting 15 files...', 15);
+                    setTimeout(() => {
+                        showSuccess('Files Deleted', 'Successfully deleted 15 files');
+                    }, 2000);
+                    break;
+                case 'cancel':
+                    showInfo('Cancelled', 'Operation cancelled');
+                    break;
+            }
+        });
+    </script>
+</body>
+</html>

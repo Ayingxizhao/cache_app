@@ -1372,29 +1372,42 @@ func (a *App) GetSettings() (string, error) {
 // UpdateSettings updates the application settings
 func (a *App) UpdateSettings(settingsJSON string) (string, error) {
 	if a.settingsManager == nil {
+		// Log error
+		if errorLogger != nil {
+			errorLogger.Error("Settings manager not available in UpdateSettings", fmt.Errorf("settings manager not available"), nil)
+		}
 		return "", fmt.Errorf("settings manager not available")
 	}
-	
+
 	var settings config.Settings
 	if err := json.Unmarshal([]byte(settingsJSON), &settings); err != nil {
+		if errorLogger != nil {
+			errorLogger.Error("Invalid settings JSON in UpdateSettings", err, map[string]interface{}{"json": settingsJSON})
+		}
 		return "", fmt.Errorf("invalid settings JSON: %w", err)
 	}
-	
+
 	if err := a.settingsManager.UpdateSettings(&settings); err != nil {
+		if errorLogger != nil {
+			errorLogger.Error("Failed to update settings in UpdateSettings", err, map[string]interface{}{"settings": settings})
+		}
 		return "", fmt.Errorf("failed to update settings: %w", err)
 	}
-	
+
 	result := map[string]interface{}{
 		"status":   "success",
 		"message":  "Settings updated successfully",
 		"settings": a.settingsManager.GetSettings(),
 	}
-	
+
 	jsonResult, err := json.Marshal(result)
 	if err != nil {
+		if errorLogger != nil {
+			errorLogger.Error("Failed to marshal result in UpdateSettings", err, nil)
+		}
 		return "", fmt.Errorf("failed to marshal result: %w", err)
 	}
-	
+
 	return string(jsonResult), nil
 }
 

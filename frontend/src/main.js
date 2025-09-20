@@ -8,10 +8,141 @@ let currentScanResult = null;
 let progressInterval = null;
 let scanStartTime = null;
 
+// Wait for Wails runtime to be ready
+function waitForWailsRuntime() {
+    return new Promise((resolve, reject) => {
+        const maxAttempts = 100; // 10 seconds max wait
+        let attempts = 0;
+        
+        const checkRuntime = () => {
+            attempts++;
+            
+            // Debug logging
+            if (attempts % 10 === 0) {
+                console.log(`Checking Wails runtime (attempt ${attempts}):`, {
+                    window: typeof window,
+                    go: typeof window.go,
+                    main: window.go ? typeof window.go.main : 'N/A',
+                    App: window.go && window.go.main ? typeof window.go.main.App : 'N/A'
+                });
+            }
+            
+            if (window.go && window.go.main && window.go.main.App) {
+                console.log('Wails runtime is ready');
+                resolve();
+                return;
+            }
+            
+            if (attempts >= maxAttempts) {
+                console.error('Wails runtime check failed. Available objects:', {
+                    window: typeof window,
+                    go: typeof window.go,
+                    wails: typeof window.wails,
+                    runtime: typeof window.runtime,
+                    location: window.location?.href,
+                    userAgent: navigator.userAgent,
+                    allWindowKeys: Object.keys(window).filter(key => 
+                        key.includes('go') || key.includes('wails') || key.includes('runtime')
+                    )
+                });
+                reject(new Error('Wails runtime not available after 10 seconds'));
+                return;
+            }
+            
+            setTimeout(checkRuntime, 100);
+        };
+        
+        checkRuntime();
+    });
+}
+
+// Fallback initialization when Wails runtime is not available
+function initializeAppFallback() {
+    console.log('Initializing app in fallback mode (no Wails runtime)');
+    
+    // Check if we're running in a browser vs Wails app
+    const isRunningInBrowser = window.location.protocol === 'http:' || window.location.protocol === 'https:';
+    const isRunningInWails = window.location.protocol === 'wails:';
+    
+    let errorMessage = 'Running in demo mode - Wails runtime not available. Some features may be limited.';
+    if (isRunningInBrowser) {
+        errorMessage = 'This app must be run through the Wails desktop application, not in a web browser.';
+    } else if (isRunningInWails) {
+        errorMessage = 'Wails runtime not available. Please restart the application.';
+    }
+    
+    // Show a warning message
+    showError(errorMessage, true, () => {
+        // Retry button functionality
+        waitForWailsRuntime().then(() => {
+            hideError();
+            initializeApp();
+        }).catch((error) => {
+            console.error('Retry failed:', error);
+        });
+    });
+    
+    // Populate with demo data
+    const demoLocations = [
+        {
+            id: 'demo-browser-cache',
+            name: 'Browser Cache (Demo)',
+            path: '~/Library/Caches/Google/Chrome',
+            type: 'user',
+            description: 'Chrome browser cache files'
+        },
+        {
+            id: 'demo-system-cache',
+            name: 'System Cache (Demo)',
+            path: '/Library/Caches',
+            type: 'system',
+            description: 'System-wide cache files'
+        },
+        {
+            id: 'demo-app-cache',
+            name: 'Application Cache (Demo)',
+            path: '~/Library/Caches/com.example.app',
+            type: 'application',
+            description: 'Application-specific cache files'
+        }
+    ];
+    
+    populateLocationsDropdown(demoLocations);
+    
+    // Show demo system info
+    const demoSystemInfo = {
+        os: 'macOS (Demo Mode)',
+        scan_time: new Date().toISOString(),
+        app_version: '1.0.0',
+        go_version: 'N/A (Demo Mode)',
+        error_count: 0,
+        notification_count: 0,
+        error_handling: 'demo',
+        logging: 'demo'
+    };
+    
+    updateSystemInfo(demoSystemInfo);
+    
+    // Disable scan buttons and show demo message
+    const scanButtons = document.querySelectorAll('.scan-button, .scan-all-button');
+    scanButtons.forEach(button => {
+        button.disabled = true;
+        button.textContent = 'Demo Mode - Runtime Required';
+    });
+    
+    console.log('App initialized in fallback mode');
+}
+
 // Initialize the app
 document.addEventListener('DOMContentLoaded', function() {
     createUI();
-    initializeApp();
+    // Wait for Wails runtime to be ready
+    waitForWailsRuntime().then(() => {
+        initializeApp();
+    }).catch((error) => {
+        console.error('Failed to initialize Wails runtime:', error);
+        initializeAppFallback();
+    });
     setupEventListeners();
     
     // Make functions globally available
@@ -185,7 +316,7 @@ function createUI() {
         </div>
         
         <!-- Settings Modal -->
-        <div id="settingsModal" class="modal-overlay" style="display: none;">
+        <div id="settingsModal" class="modal-overlay">
             <div class="modal-content settings-modal">
                 <div class="modal-header">
                     <h2>Settings</h2>
@@ -359,6 +490,11 @@ function createUI() {
 async function initializeApp() {
     try {
         console.log('Initializing app...');
+        
+        // Double-check Wails runtime is available
+        if (!window.go || !window.go.main || !window.go.main.App) {
+            throw new Error('Wails runtime not available during initialization');
+        }
         
         // Load cache locations from config
         console.log('Loading cache locations...');
@@ -594,6 +730,11 @@ async function scanSingleLocation() {
 
 async function scanAllLocations() {
     try {
+        // Check if Wails runtime is available
+        if (!window.go || !window.go.main || !window.go.main.App) {
+            throw new Error('Application runtime not available');
+        }
+        
         setScanningState(true);
         showProgress('Starting full system scan...', true);
         scanStartTime = Date.now();
@@ -1622,6 +1763,22 @@ function showError(message, isRetryable = false, retryCallback = null) {
         setTimeout(() => {
             hideError();
         }, 10000);
+    }
+}
+
+function showSuccess(message, autoHide = true, onClose = null) {
+    const errorContainer = document.getElementById('errorContainer');
+    const errorMessage = document.getElementById('errorMessage');
+    if (!errorContainer || !errorMessage) return;
+    errorContainer.classList.remove('error');
+    errorContainer.classList.add('success');
+    errorMessage.textContent = message;
+    errorContainer.style.display = 'block';
+    if (autoHide) {
+        setTimeout(() => {
+            errorContainer.style.display = 'none';
+            if (onClose) onClose();
+        }, 2000);
     }
 }
 
@@ -2828,10 +2985,17 @@ let currentSettings = null;
 
 // Show settings modal
 function showSettingsModal() {
+    console.log('showSettingsModal called');
     const modal = document.getElementById('settingsModal');
+    console.log('Modal element:', modal);
     if (modal) {
-        modal.style.display = 'flex';
+        console.log('Adding active class to modal');
+        modal.classList.add('active');
+        console.log('Modal classes after adding active:', modal.className);
+        console.log('Modal computed styles:', window.getComputedStyle(modal));
         loadSettingsData();
+    } else {
+        console.error('Settings modal element not found!');
     }
 }
 
@@ -2839,13 +3003,20 @@ function showSettingsModal() {
 function hideSettingsModal() {
     const modal = document.getElementById('settingsModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('active');
     }
 }
 
 // Load settings data from backend
 async function loadSettingsData() {
     try {
+        // Check if Wails runtime is available
+        if (!window.go || !window.go.main || !window.go.main.App) {
+            console.warn('Wails runtime not available, using demo settings');
+            loadDemoSettings();
+            return;
+        }
+
         showProgress('Loading settings...', true);
         const result = await GetSettings();
         currentSettings = JSON.parse(result);
@@ -2853,14 +3024,91 @@ async function loadSettingsData() {
         showProgress('Settings loaded', false);
     } catch (error) {
         console.error('Error loading settings:', error);
+        console.warn('Falling back to demo settings');
+        loadDemoSettings();
         showError(`Failed to load settings: ${error.message}`);
         showProgress('Failed to load settings', false);
     }
 }
 
+// Load demo settings when Wails runtime is not available
+function loadDemoSettings() {
+    console.log('Loading demo settings...');
+    console.log('Current settings before:', currentSettings);
+    currentSettings = {
+        backup: {
+            retention_days: 30,
+            max_backup_size_mb: 1024,
+            auto_cleanup: true,
+            cleanup_threshold_days: 7,
+            compress_backups: true,
+            verify_integrity: true,
+            create_manifest: true
+        },
+        safety: {
+            default_safe_level: "Safe",
+            require_confirmation: true,
+            show_safety_warnings: true,
+            confirm_deletion: true,
+            confirm_large_files: true,
+            confirm_system_files: true,
+            large_file_threshold_mb: 100,
+            safe_age_threshold_days: 30,
+            caution_age_threshold_days: 7,
+            protect_system_paths: true,
+            protect_user_data: true,
+            protect_dev_files: true
+        },
+        performance: {
+            scan_depth: 5,
+            max_file_size_mb: 500,
+            concurrent_scans: 3,
+            scan_timeout_seconds: 300,
+            max_memory_usage_mb: 512,
+            enable_caching: true,
+            cache_size_mb: 64,
+            update_interval_ms: 1000,
+            show_progress: true,
+            verbose_logging: false
+        },
+        privacy: {
+            enable_cloud_ai: false,
+            share_analytics: false,
+            share_crash_reports: false,
+            collect_usage_stats: false,
+            collect_error_logs: true,
+            collect_performance: false,
+            retain_logs_days: 7,
+            retain_stats_days: 30,
+            auto_delete_old_data: true
+        },
+        ui: {
+            theme: "auto",
+            language: "en",
+            font_size: 14,
+            window_width: 1024,
+            window_height: 768,
+            remember_window_size: true,
+            show_notifications: true,
+            notification_sound: true,
+            notification_duration_ms: 3000,
+            high_contrast: false,
+            reduce_animations: false,
+            screen_reader: false
+        }
+    };
+    console.log('Demo settings created:', currentSettings);
+    populateSettingsForms();
+    showProgress('Demo settings loaded', false);
+}
+
 // Populate settings forms with current data
 function populateSettingsForms() {
-    if (!currentSettings) return;
+    console.log('populateSettingsForms called with:', currentSettings);
+    if (!currentSettings) {
+        console.log('No current settings, returning');
+        return;
+    }
 
     // Populate backup form
     populateForm('backup-form', currentSettings.backup);
@@ -2876,8 +3124,13 @@ function populateSettingsForms() {
 
 // Helper function to populate a form with data
 function populateForm(formId, data) {
+    console.log(`populateForm called for ${formId} with data:`, data);
     const form = document.getElementById(formId);
-    if (!form || !data) return;
+    console.log(`Form element found for ${formId}:`, form);
+    if (!form || !data) {
+        console.log(`No form found for ${formId} or no data provided`);
+        return;
+    }
 
     Object.keys(data).forEach(key => {
         const element = form.querySelector(`[name="${key}"]`);
@@ -2912,6 +3165,14 @@ function switchSettingsCategory(category) {
 async function saveAllSettings() {
     try {
         showProgress('Saving settings...', true);
+        
+        // Check if Wails runtime is available
+        if (!window.go || !window.go.main || !window.go.main.App) {
+            console.warn('Wails runtime not available, settings will not persist');
+            showProgress('Settings updated (demo mode)', false);
+            showSuccess('Settings updated! Note: Settings will not persist in demo mode.');
+            return;
+        }
         
         // Collect data from all forms
         const backupData = getFormData('backup-form');
@@ -2955,6 +3216,16 @@ async function resetAllSettings() {
     
     try {
         showProgress('Resetting settings...', true);
+        
+        // Check if Wails runtime is available
+        if (!window.go || !window.go.main || !window.go.main.App) {
+            console.warn('Wails runtime not available, resetting to demo defaults');
+            loadDemoSettings();
+            showProgress('Settings reset (demo mode)', false);
+            showSuccess('Settings reset to defaults! Note: In demo mode, settings will not persist.');
+            return;
+        }
+        
         const result = await ResetSettings();
         const response = JSON.parse(result);
         
@@ -2969,6 +3240,8 @@ async function resetAllSettings() {
         }
     } catch (error) {
         console.error('Error resetting settings:', error);
+        console.warn('Falling back to demo settings reset');
+        loadDemoSettings();
         showError(`Failed to reset settings: ${error.message}`);
         showProgress('Failed to reset settings', false);
     }

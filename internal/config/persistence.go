@@ -6,12 +6,29 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"cache_app/internal/ui"
 )
 
 // SettingsManager handles loading, saving, and managing application settings
 type SettingsManager struct {
 	settingsPath string
 	settings     *Settings
+}
+
+var errorLogger *ui.AppLogger
+
+func init() {
+	logDir := "logs"
+	logManager, err := ui.SetupDefaultLogging(logDir)
+	if err != nil {
+		// fallback: print to console
+		fmt.Printf("[ERROR] Failed to set up error logger: %v\n", err)
+		return
+	}
+	errLogger, ok := logManager.GetLogger("error")
+	if ok {
+		errorLogger = errLogger
+	}
 }
 
 // NewSettingsManager creates a new settings manager with the default settings path
@@ -65,31 +82,51 @@ func NewSettingsManagerWithPath(settingsPath string) (*SettingsManager, error) {
 func (sm *SettingsManager) LoadSettings() error {
 	// Check if settings file exists
 	if _, err := os.Stat(sm.settingsPath); os.IsNotExist(err) {
-		// Create default settings if file doesn't exist
 		sm.settings = DefaultSettings()
-		return sm.SaveSettings()
+		err := sm.SaveSettings()
+		if err != nil && errorLogger != nil {
+			errorLogger.Error("Failed to save default settings", err, nil)
+		}
+		return err
 	}
 	
 	// Read settings file
 	data, err := os.ReadFile(sm.settingsPath)
 	if err != nil {
+		if errorLogger != nil {
+			errorLogger.Error("Failed to read settings file", err, map[string]interface{}{"path": sm.settingsPath})
+		}
 		return fmt.Errorf("failed to read settings file: %w", err)
 	}
 	
 	// Parse JSON
 	var settings Settings
 	if err := json.Unmarshal(data, &settings); err != nil {
+		if errorLogger != nil {
+			errorLogger.Error("Failed to parse settings JSON", err, nil)
+		}
 		// If parsing fails, use defaults
 		sm.settings = DefaultSettings()
-		return sm.SaveSettings()
+		err := sm.SaveSettings()
+		if err != nil && errorLogger != nil {
+			errorLogger.Error("Failed to save default settings after parse error", err, nil)
+		}
+		return err
 	}
 	
 	// Validate settings
 	if errors := ValidateSettings(&settings); len(errors) > 0 {
+		if errorLogger != nil {
+			errorLogger.Error("Settings validation failed on load", fmt.Errorf("validation errors: %v", errors), map[string]interface{}{"validation_errors": errors})
+		}
 		// If validation fails, merge with defaults
 		defaults := DefaultSettings()
 		sm.settings = MergeSettings(&settings, defaults)
-		return sm.SaveSettings()
+		err := sm.SaveSettings()
+		if err != nil && errorLogger != nil {
+			errorLogger.Error("Failed to save merged settings after validation error", err, nil)
+		}
+		return err
 	}
 	
 	sm.settings = &settings
@@ -99,7 +136,11 @@ func (sm *SettingsManager) LoadSettings() error {
 // SaveSettings saves the current settings to the settings file
 func (sm *SettingsManager) SaveSettings() error {
 	if sm.settings == nil {
-		return fmt.Errorf("no settings to save")
+		err := fmt.Errorf("no settings to save")
+		if errorLogger != nil {
+			errorLogger.Error("No settings to save", err, nil)
+		}
+		return err
 	}
 	
 	// Update last modified timestamp
@@ -107,22 +148,35 @@ func (sm *SettingsManager) SaveSettings() error {
 	
 	// Validate settings before saving
 	if errors := ValidateSettings(sm.settings); len(errors) > 0 {
-		return fmt.Errorf("settings validation failed: %v", errors)
+		err := fmt.Errorf("settings validation failed: %v", errors)
+		if errorLogger != nil {
+			errorLogger.Error("Settings validation failed", err, map[string]interface{}{"validation_errors": errors})
+		}
+		return err
 	}
 	
 	// Marshal to JSON with indentation
 	data, err := json.MarshalIndent(sm.settings, "", "  ")
 	if err != nil {
+		if errorLogger != nil {
+			errorLogger.Error("Failed to marshal settings", err, nil)
+		}
 		return fmt.Errorf("failed to marshal settings: %w", err)
 	}
 	
 	// Write to file atomically
 	tempPath := sm.settingsPath + ".tmp"
 	if err := os.WriteFile(tempPath, data, 0644); err != nil {
+		if errorLogger != nil {
+			errorLogger.Error("Failed to write temp settings file", err, map[string]interface{}{"path": tempPath})
+		}
 		return fmt.Errorf("failed to write settings file: %w", err)
 	}
 	
 	if err := os.Rename(tempPath, sm.settingsPath); err != nil {
+		if errorLogger != nil {
+			errorLogger.Error("Failed to rename temp settings file", err, map[string]interface{}{"from": tempPath, "to": sm.settingsPath})
+		}
 		return fmt.Errorf("failed to rename settings file: %w", err)
 	}
 	
