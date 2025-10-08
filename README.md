@@ -102,20 +102,6 @@ After building, you can run the application:
 ./build/bin/cache_app
 ```
 
-## Configuration
-
-You can configure the project by editing `wails.json`. More information about project settings can be found at: https://wails.io/docs/reference/project-config
-
-## Next Steps
-
-This is a basic Wails application template. To build a full cache cleaner:
-
-1. Implement cache detection logic in `app.go`
-2. Add UI components for cache management
-3. Implement file system operations for cache cleaning
-4. Add progress indicators and user feedback
-5. Implement safety checks and confirmations
-
 ## License
 
 This project is open source and available under the MIT License.
